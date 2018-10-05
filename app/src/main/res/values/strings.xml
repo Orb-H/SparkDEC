@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">SparkDEC</string>
+    <string name="app_menu1">지도</string>
+    <string name="app_menu2">보행 통계</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title">SparkDec</string>
+    <string name="nav_header_subtitle">rhythmstar@skku.edu</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
 </resources>
