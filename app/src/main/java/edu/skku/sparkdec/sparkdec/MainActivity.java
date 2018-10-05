@@ -102,6 +102,7 @@ public class MainActivity extends AppCompatActivity
         drawer.closeDrawer(GravityCompat.START);
         return true;
     }
+    /*
     public void test(View v) throws UnsupportedEncodingException {
         if (android.os.Debug.isDebuggerConnected())
             android.os.Debug.waitForDebugger();
@@ -113,7 +114,7 @@ public class MainActivity extends AppCompatActivity
         Toast.makeText(this, a, Toast.LENGTH_LONG);
         System.out.println(a);
     }
-
+    */
     public ArrayList<Double[]> pedestrianPath(String sx, String sy, String ex, String ey, String startName, String endName) throws UnsupportedEncodingException {
         final String coordinate = "WGS84GEO";
         final String option = "0";
@@ -121,7 +122,10 @@ public class MainActivity extends AppCompatActivity
         epochTime -= 31556926 * 33;
         final String gpsTime = epochTime.toString();
         final String requestValue = "startX=" + "127.132707" + "&startY=" + "37.611132" + "&endX=" + "126.977525" + "&endY=" + "37.291691" + "&reqCoordType=" + coordinate +
-                "&startName=" + URLEncoder.encode(startName, "UTF-8") + "&endName=" + URLEncoder.encode(endName, "UTF-8") + "&searchOption=" + option + "&resCoordType=" + coordinate;
+                "&startName=" + URLEncoder.encode("출발지", "UTF-8") + "&endName=" + URLEncoder.encode("도착지", "UTF-8") + "&searchOption=" + option + "&resCoordType=" + coordinate;
+
+//        final String requestValue = "startX=" + sx + "&startY=" + sy + "&endX=" + ex + "&endY=" + ey + "&reqCoordType=" + coordinate +
+//                "&startName=" + URLEncoder.encode(startName, "UTF-8") + "&endName=" + URLEncoder.encode(endName, "UTF-8") + "&searchOption=" + option + "&resCoordType=" + coordinate;
 
         System.out.println(requestValue);
         try {
@@ -129,13 +133,20 @@ public class MainActivity extends AppCompatActivity
             ArrayList<Double[]> returnValue = new ArrayList<>();
             JSONObject jParser = new JSONObject(returnString);
             JSONArray jArray = jParser.getJSONArray("features");
+            boolean flag = true;
             for (int i = 0; i < jArray.length(); i++) {
                 JSONObject obj = jArray.getJSONObject(i);
 
                 if (obj.getJSONObject("geometry").getString("type").equals("Point")) {
                     JSONArray innerArray = obj.getJSONObject("geometry").getJSONArray("coordinates");
+                    if(flag && obj.getJSONObject("properties").getString("pointType").equals("SP")){
+                        flag = false;
+                        Double[] doubleArray = {obj.getJSONObject("properties").getDouble("totalDistance"), obj.getJSONObject("properties").getDouble("totalTime")};
+                        returnValue.add(doubleArray);
+                    }
                     Double[] doubleArray = {innerArray.getDouble(0), innerArray.getDouble(1)};
                     returnValue.add(doubleArray);
+
                 }
             }
             return returnValue;
