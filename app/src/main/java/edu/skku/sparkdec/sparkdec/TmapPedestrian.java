@@ -13,12 +13,14 @@ import java.net.URL;
 class TmapPedestrian extends AsyncTask<String, Void, String> {
     String strUrl;
     StringBuilder returnBuilder;
+
     @Override
     protected void onPreExecute() {
         super.onPreExecute();
         returnBuilder = new StringBuilder();
         strUrl = "https://api2.sktelecom.com/tmap/routes/pedestrian?version=1";
     }
+
     @Override
     protected String doInBackground(String... strings) {
         if (android.os.Debug.isDebuggerConnected())

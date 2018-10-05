@@ -1,6 +1,11 @@
 package edu.skku.sparkdec.sparkdec;
 
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.design.widget.Snackbar;
@@ -12,7 +17,11 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Toast;
+
+import com.google.android.gms.location.ActivityRecognitionClient;
+import com.google.android.gms.location.DetectedActivity;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -22,12 +31,20 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener {
+        implements NavigationView.OnNavigationItemSelectedListener, SharedPreferences.OnSharedPreferenceChangeListener {
+    public static final String DETECTED_ACTIVITY = ".DETECTED_ACTIVITY";
+    private Context mContext;
+
+    private ActivityRecognitionClient mActivityRecognitionClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        mContext = this;
+        mActivityRecognitionClient = new ActivityRecognitionClient(this);
+
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
@@ -102,6 +119,7 @@ public class MainActivity extends AppCompatActivity
         drawer.closeDrawer(GravityCompat.START);
         return true;
     }
+
     /*
     public void test(View v) throws UnsupportedEncodingException {
         if (android.os.Debug.isDebuggerConnected())
@@ -139,7 +157,7 @@ public class MainActivity extends AppCompatActivity
 
                 if (obj.getJSONObject("geometry").getString("type").equals("Point")) {
                     JSONArray innerArray = obj.getJSONObject("geometry").getJSONArray("coordinates");
-                    if(flag && obj.getJSONObject("properties").getString("pointType").equals("SP")){
+                    if (flag && obj.getJSONObject("properties").getString("pointType").equals("SP")) {
                         flag = false;
                         Double[] doubleArray = {obj.getJSONObject("properties").getDouble("totalDistance"), obj.getJSONObject("properties").getDouble("totalTime")};
                         returnValue.add(doubleArray);
@@ -156,5 +174,50 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    public void requestUpdatesHandler(View view) {
+//Set the activity detection interval. I’m using 3 seconds//
+        Task<Void> task = mActivityRecognitionClient.requestActivityUpdates(
+                3000,
+                getActivityDetectionPendingIntent());
+        task.addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                updateDetectedActivitiesList();
+            }
+        });
+    }
+
+    public void onResume() {
+        super.onResume();
+        PreferenceManager.getDefaultSharedPreferences(this)
+                .registerOnSharedPreferenceChangeListener(this);
+        updateDetectedActivitiesList();
+    }
+
+    public void onPause() {
+        PreferenceManager.getDefaultSharedPreferences(this)
+                .unregisterOnSharedPreferenceChangeListener(this);
+        super.onPause();
+    }
+
+    protected void updateDetectedActivitiesList() {
+        ArrayList<DetectedActivity> detectedActivities = ActivityIntentService.detectedActivitiesFromJson(
+                PreferenceManager.getDefaultSharedPreferences(mContext)
+                        .getString(DETECTED_ACTIVITY, ""));
+
+
+    }
+
+    private PendingIntent getActivityDetectionPendingIntent() {
+        Intent intent = new Intent(this, ActivityIntentService.class);
+        return PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+    }
+
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
+        if (s.equals(DETECTED_ACTIVITY)) {
+            updateDetectedActivitiesList();
+        }
+    }
 }
 
