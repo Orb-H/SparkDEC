@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.design.widget.Snackbar;
@@ -14,12 +15,22 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.TextView;
 
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.fitness.Fitness;
+import com.google.android.gms.fitness.FitnessOptions;
+import com.google.android.gms.fitness.data.DataType;
+import com.google.android.gms.fitness.request.DataReadRequest;
+import com.google.android.gms.fitness.result.DataReadResponse;
 import com.google.android.gms.location.ActivityRecognitionClient;
 import com.google.android.gms.location.DetectedActivity;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
@@ -29,6 +40,10 @@ import org.json.JSONObject;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, SharedPreferences.OnSharedPreferenceChangeListener {
@@ -37,13 +52,12 @@ public class MainActivity extends AppCompatActivity
 
     private ActivityRecognitionClient mActivityRecognitionClient;
 
+    private long startTime;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        mContext = this;
-        mActivityRecognitionClient = new ActivityRecognitionClient(this);
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -65,6 +79,66 @@ public class MainActivity extends AppCompatActivity
 
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+
+        mContext = this;
+        mActivityRecognitionClient = new ActivityRecognitionClient(this);
+
+        //Fitness API Initialize
+        FitnessOptions fitnessOptions = FitnessOptions.builder()
+                .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.AGGREGATE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
+                .build();
+
+        startTime = Calendar.getInstance().getTimeInMillis();
+
+        if (!GoogleSignIn.hasPermissions(GoogleSignIn.getLastSignedInAccount(this), fitnessOptions)) {
+            GoogleSignIn.requestPermissions(
+                    this, // your activity
+                    R.string.oauth_key,
+                    GoogleSignIn.getLastSignedInAccount(this),
+                    fitnessOptions);
+        }
+
+        try {
+            ArrayList<Double[]> d = pedestrianPath("126.9700634", "37.3001989", "126.9732337", "37.2939288", "성균관대역", "성균관대학교 반도체관");
+            updateText1(d.get(0)[1] + "");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void accessGoogleFit() {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(new Date());
+        long endTime = cal.getTimeInMillis();
+
+        DataReadRequest readRequest = new DataReadRequest.Builder()
+                .aggregate(DataType.TYPE_STEP_COUNT_DELTA, DataType.AGGREGATE_STEP_COUNT_DELTA)
+                .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+                .build();
+
+
+        Fitness.getHistoryClient(this, GoogleSignIn.getLastSignedInAccount(this))
+                .readData(readRequest)
+                .addOnSuccessListener(new OnSuccessListener<DataReadResponse>() {
+                    @Override
+                    public void onSuccess(DataReadResponse dataReadResponse) {
+                        Log.d("Temp", "onSuccess");
+                        updateText2(dataReadResponse.getDataSet(DataType.TYPE_STEP_COUNT_CUMULATIVE) + " steps");
+                    }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.e("Temp", "onFailure()", e);
+                    }
+                })
+                .addOnCompleteListener(new OnCompleteListener() {
+                    @Override
+                    public void onComplete(@NonNull Task task) {
+                        Log.d("Temp", "onComplete()");
+                    }
+                });
     }
 
     @Override
@@ -139,7 +213,7 @@ public class MainActivity extends AppCompatActivity
         Long epochTime = System.currentTimeMillis() / 1000;
         epochTime -= 31556926 * 33;
         final String gpsTime = epochTime.toString();
-        final String requestValue = "startX=" + "127.132707" + "&startY=" + "37.611132" + "&endX=" + "126.977525" + "&endY=" + "37.291691" + "&reqCoordType=" + coordinate +
+        final String requestValue = "startX=" + sx + "&startY=" + sy + "&endX=" + ex + "&endY=" + ey + "&reqCoordType=" + coordinate +
                 "&startName=" + URLEncoder.encode("출발지", "UTF-8") + "&endName=" + URLEncoder.encode("도착지", "UTF-8") + "&searchOption=" + option + "&resCoordType=" + coordinate;
 
 //        final String requestValue = "startX=" + sx + "&startY=" + sy + "&endX=" + ex + "&endY=" + ey + "&reqCoordType=" + coordinate +
@@ -187,6 +261,10 @@ public class MainActivity extends AppCompatActivity
         });
     }
 
+    public void startRecord() {
+        startTime = Calendar.getInstance().getTimeInMillis();
+    }
+
     public void onResume() {
         super.onResume();
         PreferenceManager.getDefaultSharedPreferences(this)
@@ -201,11 +279,19 @@ public class MainActivity extends AppCompatActivity
     }
 
     protected void updateDetectedActivitiesList() {
+        accessGoogleFit();
         ArrayList<DetectedActivity> detectedActivities = ActivityIntentService.detectedActivitiesFromJson(
                 PreferenceManager.getDefaultSharedPreferences(mContext)
                         .getString(DETECTED_ACTIVITY, ""));
 
+        HashMap<Integer, Integer> detectedActivitiesMap = new HashMap<>();
 
+        StringBuilder sb = new StringBuilder();
+        for (DetectedActivity activity : detectedActivities) {
+            sb.append(ActivityIntentService.getActivityString(this, activity.getType()) + "(" + activity.getConfidence() + "%),");
+        }
+
+        updateText3(sb.toString());
     }
 
     private PendingIntent getActivityDetectionPendingIntent() {
@@ -218,6 +304,21 @@ public class MainActivity extends AppCompatActivity
         if (s.equals(DETECTED_ACTIVITY)) {
             updateDetectedActivitiesList();
         }
+    }
+
+    private void updateText1(String s) {
+        TextView t = (TextView) findViewById(R.id.textView10);
+        t.setText(s);
+    }
+
+    private void updateText2(String s) {
+        TextView t = (TextView) findViewById(R.id.textView12);
+        t.setText(s);
+    }
+
+    private void updateText3(String s) {
+        TextView t = (TextView) findViewById(R.id.textView13);
+        t.setText(s);
     }
 }
 

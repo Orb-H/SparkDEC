@@ -1,20 +1,18 @@
 package edu.skku.sparkdec.sparkdec;
 
-import java.util.ArrayList;
-import java.lang.reflect.Type;
-
-import android.content.Context;
-
-import com.google.gson.Gson;
-
-import android.content.Intent;
 import android.app.IntentService;
-import android.preference.PreferenceManager;
+import android.content.Context;
+import android.content.Intent;
 import android.content.res.Resources;
+import android.preference.PreferenceManager;
 
-import com.google.gson.reflect.TypeToken;
 import com.google.android.gms.location.ActivityRecognitionResult;
 import com.google.android.gms.location.DetectedActivity;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.lang.reflect.Type;
+import java.util.ArrayList;
 
 //Extend IntentService//
 public class ActivityIntentService extends IntentService {

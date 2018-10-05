@@ -11,8 +11,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 
 class TmapPedestrian extends AsyncTask<String, Void, String> {
-    String strUrl;
-    StringBuilder returnBuilder;
+    private String strUrl;
+    private StringBuilder returnBuilder;
 
     @Override
     protected void onPreExecute() {
