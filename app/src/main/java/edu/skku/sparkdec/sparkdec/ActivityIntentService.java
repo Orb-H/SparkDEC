@@ -41,7 +41,7 @@ public class ActivityIntentService extends IntentService {
             ArrayList<DetectedActivity> detectedActivities = (ArrayList) result.getProbableActivities();
             PreferenceManager.getDefaultSharedPreferences(this)
                     .edit()
-                    .putString(".DETECTED_ACTIVITY",
+                    .putString(MainActivity.DETECTED_ACTIVITY,
                             detectedActivitiesToJson(detectedActivities))
                     .apply();
 
@@ -62,6 +62,10 @@ public class ActivityIntentService extends IntentService {
                 return resources.getString(R.string.walking);
             case DetectedActivity.IN_VEHICLE:
                 return resources.getString(R.string.vehicle);
+            case DetectedActivity.ON_FOOT:
+                return resources.getString(R.string.on_foot);
+            case DetectedActivity.TILTING:
+                return resources.getString(R.string.tilting);
             default:
                 return resources.getString(R.string.unknown_activity);
         }

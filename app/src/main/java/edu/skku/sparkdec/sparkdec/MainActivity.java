@@ -4,9 +4,11 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.design.widget.Snackbar;
@@ -20,16 +22,27 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.Scopes;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.Scope;
 import com.google.android.gms.fitness.Fitness;
 import com.google.android.gms.fitness.FitnessOptions;
+import com.google.android.gms.fitness.data.Bucket;
+import com.google.android.gms.fitness.data.DataSet;
 import com.google.android.gms.fitness.data.DataType;
+import com.google.android.gms.fitness.data.Field;
 import com.google.android.gms.fitness.request.DataReadRequest;
 import com.google.android.gms.fitness.result.DataReadResponse;
+import com.google.android.gms.fitness.result.DataReadResult;
 import com.google.android.gms.location.ActivityRecognitionClient;
 import com.google.android.gms.location.DetectedActivity;
-import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
@@ -42,17 +55,24 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener, SharedPreferences.OnSharedPreferenceChangeListener {
+        implements NavigationView.OnNavigationItemSelectedListener, SharedPreferences.OnSharedPreferenceChangeListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
     public static final String DETECTED_ACTIVITY = ".DETECTED_ACTIVITY";
     private Context mContext;
 
+    private final int RC_SIGN_IN = 100;
+
     private ActivityRecognitionClient mActivityRecognitionClient;
 
-    private long startTime;
+    private long startTime = Calendar.getInstance().getTimeInMillis();
+
+    private GoogleSignInAccount mAccount;
+    private boolean accountVerified = false;
+
+    private GoogleApiClient mClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,25 +103,121 @@ public class MainActivity extends AppCompatActivity
         mContext = this;
         mActivityRecognitionClient = new ActivityRecognitionClient(this);
 
+        mClient = new GoogleApiClient.Builder(this)
+                .addApi(Fitness.HISTORY_API)
+                .addScope(new Scope(Scopes.FITNESS_ACTIVITY_READ))
+                .addConnectionCallbacks(this)
+                .enableAutoManage(this, 0, this)
+                .build();
+
+        requestUpdatesHandler();
+
+        requestGoogleSignIn();
+    }
+
+    private class StepCounter extends AsyncTask<Long, Void, Void> {
+        public Void doInBackground(Long... params) {
+            long endTime = params[1];
+            long startTime = params[0];
+            Log.e("TEMP", startTime + " " + endTime);
+
+//Check how many steps were walked and recorded in the last 7 days
+            DataReadRequest readRequest = new DataReadRequest.Builder()
+                    .aggregate(DataType.TYPE_STEP_COUNT_DELTA, DataType.AGGREGATE_STEP_COUNT_DELTA)
+                    .bucketByTime(1, TimeUnit.DAYS)
+                    .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+                    .build();
+
+            DataReadResult dataReadResult = Fitness.HistoryApi.readData(mClient, readRequest).await(1, TimeUnit.MINUTES);
+
+            long count = 0;
+
+            if (dataReadResult.getBuckets().size() > 0) {
+                Log.e("History", "Number of buckets: " + dataReadResult.getBuckets().size());
+                for (Bucket bucket : dataReadResult.getBuckets()) {
+                    List<DataSet> dataSets = bucket.getDataSets();
+                    for (DataSet dataSet : dataSets) {
+                        if (dataSet.getDataType().equals(DataType.TYPE_STEP_COUNT_DELTA)) {
+                            //count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
+                            Log.e("TEMP", dataSet.toString());
+                        }
+                    }
+                }
+            }
+
+            updateText2(count + " steps");
+            return null;
+        }
+    }
+
+    public void onConnectionSuspended(int i) {
+        Log.e("HistoryAPI", "onConnectionSuspended");
+    }
+
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        Log.e("HistoryAPI", "onConnectionFailed");
+    }
+
+    public void onConnected(@Nullable Bundle bundle) {
+        Log.e("HistoryAPI", "onConnected");
+    }
+
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        // Result returned from launching the Intent from GoogleSignInClient.getSignInIntent(...);
+        if (requestCode == RC_SIGN_IN) {
+            // The Task returned from this call is always completed, no need to attach
+            // a listener.
+            if (resultCode == 0 || resultCode == -1) {
+                Log.e("TEMP", resultCode + "");
+                Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
+                mAccount = task.getResult();
+                accountVerified = true;
+                initGoogleFit();
+            } else {
+                Toast.makeText(this, "Due to unknown reason, google login failed. Please retry.", Toast.LENGTH_LONG).show();
+                requestGoogleSignIn();
+            }
+        }
+    }
+
+    private void requestGoogleSignIn() {
+        mAccount = GoogleSignIn.getLastSignedInAccount(this);
+        if (mAccount == null) {
+            GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                    .requestServerAuthCode(getResources().getString(R.string.oauth_key_debug_web))
+                    .requestEmail()
+                    .build();
+            GoogleSignInClient mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
+            Intent signInIntent = mGoogleSignInClient.getSignInIntent();
+            startActivityForResult(signInIntent, RC_SIGN_IN);
+        } else {
+            accountVerified = true;
+            initGoogleFit();
+        }
+    }
+
+    private void initGoogleFit() {
         //Fitness API Initialize
         FitnessOptions fitnessOptions = FitnessOptions.builder()
                 .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
                 .addDataType(DataType.AGGREGATE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
                 .build();
 
-        startTime = Calendar.getInstance().getTimeInMillis();
+        startRecord();
 
-        if (!GoogleSignIn.hasPermissions(GoogleSignIn.getLastSignedInAccount(this), fitnessOptions)) {
+        if (!GoogleSignIn.hasPermissions(mAccount, fitnessOptions)) {
             GoogleSignIn.requestPermissions(
                     this, // your activity
-                    R.string.oauth_key,
-                    GoogleSignIn.getLastSignedInAccount(this),
+                    0,
+                    mAccount,
                     fitnessOptions);
         }
 
         try {
             ArrayList<Double[]> d = pedestrianPath("126.9700634", "37.3001989", "126.9732337", "37.2939288", "성균관대역", "성균관대학교 반도체관");
-            updateText1(d.get(0)[1] + "");
+            updateText1(String.format("%.0f m", d.get(0)[1]) + "");
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
@@ -112,33 +228,9 @@ public class MainActivity extends AppCompatActivity
         cal.setTime(new Date());
         long endTime = cal.getTimeInMillis();
 
-        DataReadRequest readRequest = new DataReadRequest.Builder()
-                .aggregate(DataType.TYPE_STEP_COUNT_DELTA, DataType.AGGREGATE_STEP_COUNT_DELTA)
-                .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
-                .build();
-
-
-        Fitness.getHistoryClient(this, GoogleSignIn.getLastSignedInAccount(this))
-                .readData(readRequest)
-                .addOnSuccessListener(new OnSuccessListener<DataReadResponse>() {
-                    @Override
-                    public void onSuccess(DataReadResponse dataReadResponse) {
-                        Log.d("Temp", "onSuccess");
-                        updateText2(dataReadResponse.getDataSet(DataType.TYPE_STEP_COUNT_CUMULATIVE) + " steps");
-                    }
-                })
-                .addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        Log.e("Temp", "onFailure()", e);
-                    }
-                })
-                .addOnCompleteListener(new OnCompleteListener() {
-                    @Override
-                    public void onComplete(@NonNull Task task) {
-                        Log.d("Temp", "onComplete()");
-                    }
-                });
+        if (accountVerified) {
+            new StepCounter().execute(startTime, endTime);
+        }
     }
 
     @Override
@@ -248,7 +340,7 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    public void requestUpdatesHandler(View view) {
+    public void requestUpdatesHandler() {
 //Set the activity detection interval. I’m using 3 seconds//
         Task<Void> task = mActivityRecognitionClient.requestActivityUpdates(
                 3000,
@@ -265,6 +357,7 @@ public class MainActivity extends AppCompatActivity
         startTime = Calendar.getInstance().getTimeInMillis();
     }
 
+    @Override
     public void onResume() {
         super.onResume();
         PreferenceManager.getDefaultSharedPreferences(this)
@@ -272,6 +365,7 @@ public class MainActivity extends AppCompatActivity
         updateDetectedActivitiesList();
     }
 
+    @Override
     public void onPause() {
         PreferenceManager.getDefaultSharedPreferences(this)
                 .unregisterOnSharedPreferenceChangeListener(this);
@@ -283,8 +377,6 @@ public class MainActivity extends AppCompatActivity
         ArrayList<DetectedActivity> detectedActivities = ActivityIntentService.detectedActivitiesFromJson(
                 PreferenceManager.getDefaultSharedPreferences(mContext)
                         .getString(DETECTED_ACTIVITY, ""));
-
-        HashMap<Integer, Integer> detectedActivitiesMap = new HashMap<>();
 
         StringBuilder sb = new StringBuilder();
         for (DetectedActivity activity : detectedActivities) {
@@ -307,17 +399,17 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void updateText1(String s) {
-        TextView t = (TextView) findViewById(R.id.textView10);
+        TextView t = findViewById(R.id.textView10);
         t.setText(s);
     }
 
     private void updateText2(String s) {
-        TextView t = (TextView) findViewById(R.id.textView12);
+        TextView t = findViewById(R.id.textView12);
         t.setText(s);
     }
 
     private void updateText3(String s) {
-        TextView t = (TextView) findViewById(R.id.textView13);
+        TextView t = findViewById(R.id.textView13);
         t.setText(s);
     }
 }
