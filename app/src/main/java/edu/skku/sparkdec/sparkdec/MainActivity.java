@@ -31,9 +31,12 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.Scopes;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Scope;
+import com.google.android.gms.common.api.Status;
 import com.google.android.gms.fitness.Fitness;
 import com.google.android.gms.fitness.FitnessOptions;
+import com.google.android.gms.fitness.FitnessStatusCodes;
 import com.google.android.gms.fitness.data.Bucket;
 import com.google.android.gms.fitness.data.DataSet;
 import com.google.android.gms.fitness.data.DataType;
@@ -105,6 +108,7 @@ public class MainActivity extends AppCompatActivity
 
         mClient = new GoogleApiClient.Builder(this)
                 .addApi(Fitness.HISTORY_API)
+                .addApi(Fitness.RECORDING_API)
                 .addScope(new Scope(Scopes.FITNESS_ACTIVITY_READ))
                 .addConnectionCallbacks(this)
                 .enableAutoManage(this, 0, this)
@@ -118,7 +122,10 @@ public class MainActivity extends AppCompatActivity
     private class StepCounter extends AsyncTask<Long, Void, Void> {
         public Void doInBackground(Long... params) {
             long endTime = params[1];
-            long startTime = params[0];
+            //long startTime = params[0];
+            Calendar cal=Calendar.getInstance();//FIXME
+            cal.add(Calendar.YEAR,-1);//FIXME
+            long startTime=cal.getTimeInMillis();//FIXME
             Log.e("TEMP", startTime + " " + endTime);
 
 //Check how many steps were walked and recorded in the last 7 days
@@ -138,6 +145,9 @@ public class MainActivity extends AppCompatActivity
                     List<DataSet> dataSets = bucket.getDataSets();
                     for (DataSet dataSet : dataSets) {
                         if (dataSet.getDataType().equals(DataType.TYPE_STEP_COUNT_DELTA)) {
+                            if(!dataSet.isEmpty()){
+                                count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
+                            }
                             //count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
                             Log.e("TEMP", dataSet.toString());
                         }
@@ -148,6 +158,27 @@ public class MainActivity extends AppCompatActivity
             updateText2(count + " steps");
             return null;
         }
+    }
+
+    public void subscribe() {
+        // To create a subscription, invoke the Recording API. As soon as the subscription is
+        // active, fitness data will start recording.
+        Fitness.RecordingApi.subscribe(mClient, DataType.TYPE_STEP_COUNT_CUMULATIVE)
+                .setResultCallback(new ResultCallback<Status>() {
+                    @Override
+                    public void onResult(Status status) {
+                        if (status.isSuccess()) {
+                            if (status.getStatusCode()
+                                    == FitnessStatusCodes.SUCCESS_ALREADY_SUBSCRIBED) {
+                                Log.e("TEMP", "Existing subscription for activity detected.");
+                            } else {
+                                Log.e("TEMP", "Successfully subscribed!");
+                            }
+                        } else {
+                            Log.e("TEMP", "There was a problem subscribing.");
+                        }
+                    }
+                });
     }
 
     public void onConnectionSuspended(int i) {
@@ -214,6 +245,8 @@ public class MainActivity extends AppCompatActivity
                     mAccount,
                     fitnessOptions);
         }
+
+        subscribe();
 
         try {
             ArrayList<Double[]> d = pedestrianPath("126.9700634", "37.3001989", "126.9732337", "37.2939288", "성균관대역", "성균관대학교 반도체관");
