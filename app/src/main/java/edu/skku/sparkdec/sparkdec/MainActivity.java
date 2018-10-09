@@ -438,10 +438,11 @@ public class MainActivity extends AppCompatActivity
         accessGoogleFit();
         ArrayList<DetectedActivity> detectedActivities = ActivityIntentService.detectedActivitiesFromJson(PreferenceManager.getDefaultSharedPreferences(mContext).getString(DETECTED_ACTIVITY, ""));
 
+        String s = PreferenceManager.getDefaultSharedPreferences(this).getString(ACTIVITY_TIME, "0,0,0,0");
+        String[] sp = s.split(",");
+
         for (DetectedActivity activity : detectedActivities) {
             if (activity.getConfidence() >= THRESHOLD) {
-                String s = PreferenceManager.getDefaultSharedPreferences(this).getString(ACTIVITY_TIME, "0,0,0,0");
-                String[] sp = s.split(",");
                 long l;
                 long temp;
                 switch (activity.getType()) {
@@ -476,18 +477,18 @@ public class MainActivity extends AppCompatActivity
                         sp[3] = Long.toString(l);
                         break;
                 }
-
-                PreferenceManager.getDefaultSharedPreferences(this).edit().putString(ACTIVITY_TIME, sp[0] + "," + sp[1] + "," + sp[2] + "," + sp[3]);
-
-                StringBuilder sb = new StringBuilder();
-                sb.append("S: " + sp[0] + "ms\n");
-                sb.append("W: " + sp[1] + "ms\n");
-                sb.append("R: " + sp[2] + "ms\n");
-                sb.append("Other: " + sp[3] + "ms");
-
-                updateText3(sb.toString());
             }
         }
+
+        PreferenceManager.getDefaultSharedPreferences(this).edit().putString(ACTIVITY_TIME, sp[0] + "," + sp[1] + "," + sp[2] + "," + sp[3]);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("S: " + sp[0] + "ms\n");
+        sb.append("W: " + sp[1] + "ms\n");
+        sb.append("R: " + sp[2] + "ms\n");
+        sb.append("Other: " + sp[3] + "ms");
+
+        updateText3(sb.toString());
     }
 
     /**
