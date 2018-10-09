@@ -42,15 +42,11 @@ import com.google.android.gms.fitness.data.DataSet;
 import com.google.android.gms.fitness.data.DataType;
 import com.google.android.gms.fitness.data.Field;
 import com.google.android.gms.fitness.request.DataReadRequest;
-import com.google.android.gms.fitness.result.DataReadResponse;
 import com.google.android.gms.fitness.result.DataReadResult;
 import com.google.android.gms.location.ActivityRecognitionClient;
 import com.google.android.gms.location.DetectedActivity;
-import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
-import com.google.android.gms.maps.SupportMapFragment;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -65,17 +61,25 @@ import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, SharedPreferences.OnSharedPreferenceChangeListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
-    public static final String DETECTED_ACTIVITY = ".DETECTED_ACTIVITY";
-    private Context mContext;
+    public static final String DETECTED_ACTIVITY = ".DETECTED_ACTIVITY";// Preference 데이터 Key
+    public static final String ACTIVITY_TIME = ".ACTIVITY_TIME";
 
-    private final int RC_SIGN_IN = 100;
+    private Context mContext;// 이 Activity의 Context
+
+    private final int RC_SIGN_IN = 100;// 구글 로그인 Intent request code
 
     private ActivityRecognitionClient mActivityRecognitionClient;
 
-    private long startTime = Calendar.getInstance().getTimeInMillis();
+    private long startTime = Calendar.getInstance().getTimeInMillis();// 특정 경로에 대해 도보 시작 시간 저장
+    private long tempTime;// Activity Transition 사이의 시간 계산용 변수
 
-    private GoogleSignInAccount mAccount;
-    private boolean accountVerified = false;
+    /**
+     * Activity를 확정하기 위한 Confidence의 최소값
+     */
+    private final int THRESHOLD = 70;
+
+    private GoogleSignInAccount mAccount;// 구글 계정 저장용 변수
+    private boolean accountVerified = false;// 구글 계정으로 로그인 되어있는 상태인지 판별
 
     private GoogleApiClient mClient;
 
@@ -95,7 +99,7 @@ public class MainActivity extends AppCompatActivity
                         .setAction("Action", null).show();
             }
         });
-        findViewById(R.id.nav_statistics).setSelected(true);
+        //findViewById(R.id.nav_statistics).setSelected(true);
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -103,9 +107,9 @@ public class MainActivity extends AppCompatActivity
         drawer.addDrawerListener(toggle);
         toggle.syncState();
 
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+        /*SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
-        mapFragment.getMapAsync((OnMapReadyCallback) this);
+        mapFragment.getMapAsync((OnMapReadyCallback) this);*/
 
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
@@ -126,13 +130,13 @@ public class MainActivity extends AppCompatActivity
         requestGoogleSignIn();
     }
 
+    /**
+     * Google Fit으로부터 특정 시간동안의 걸음 수 요청하는 AsyncTask
+     */
     private class StepCounter extends AsyncTask<Long, Void, Void> {
         public Void doInBackground(Long... params) {
             long endTime = params[1];
-            //long startTime = params[0];
-            Calendar cal=Calendar.getInstance();//FIXME
-            cal.add(Calendar.YEAR,-1);//FIXME
-            long startTime=cal.getTimeInMillis();//FIXME
+            long startTime = params[0];
             Log.e("TEMP", startTime + " " + endTime);
 
 //Check how many steps were walked and recorded in the last 7 days
@@ -152,7 +156,7 @@ public class MainActivity extends AppCompatActivity
                     List<DataSet> dataSets = bucket.getDataSets();
                     for (DataSet dataSet : dataSets) {
                         if (dataSet.getDataType().equals(DataType.TYPE_STEP_COUNT_DELTA)) {
-                            if(!dataSet.isEmpty()){
+                            if (!dataSet.isEmpty()) {
                                 count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
                             }
                             //count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
@@ -167,6 +171,9 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * Google Fit API에 걸음 수 데이터 구독 요청
+     */
     public void subscribe() {
         // To create a subscription, invoke the Recording API. As soon as the subscription is
         // active, fitness data will start recording.
@@ -200,6 +207,13 @@ public class MainActivity extends AppCompatActivity
         Log.e("HistoryAPI", "onConnected");
     }
 
+    /**
+     * 구글 로그인 Activity에 대해서만 작동
+     *
+     * @param requestCode RC_SIGN_IN인 경우만 체크
+     * @param resultCode
+     * @param data
+     */
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
@@ -220,6 +234,9 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * 구글 로그인 요청
+     */
     private void requestGoogleSignIn() {
         mAccount = GoogleSignIn.getLastSignedInAccount(this);
         if (mAccount == null) {
@@ -236,6 +253,9 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * Google Fit과 관련 변수 초기화
+     */
     private void initGoogleFit() {
         //Fitness API Initialize
         FitnessOptions fitnessOptions = FitnessOptions.builder()
@@ -263,6 +283,9 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * Google Fit 사용해서 걸음 수 업데이트하는 AsyncTask 실행
+     */
     private void accessGoogleFit() {
         Calendar cal = Calendar.getInstance();
         cal.setTime(new Date());
@@ -379,11 +402,11 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * Activity Recognition API에 3초마다 체크 요청
+     */
     public void requestUpdatesHandler() {
-//Set the activity detection interval. I’m using 3 seconds//
-        Task<Void> task = mActivityRecognitionClient.requestActivityUpdates(
-                3000,
-                getActivityDetectionPendingIntent());
+        Task<Void> task = mActivityRecognitionClient.requestActivityUpdates(3000, getActivityDetectionPendingIntent());// 3초 간격으로 Activity 체크
         task.addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
             public void onSuccess(Void result) {
@@ -392,8 +415,12 @@ public class MainActivity extends AppCompatActivity
         });
     }
 
+    /**
+     * 도보 수 체크 시작 시간 설정
+     */
     public void startRecord() {
         startTime = Calendar.getInstance().getTimeInMillis();
+        tempTime = startTime;
     }
 
     @Override
@@ -404,52 +431,121 @@ public class MainActivity extends AppCompatActivity
         updateDetectedActivitiesList();
     }
 
-    @Override
-    public void onPause() {
-        PreferenceManager.getDefaultSharedPreferences(this)
-                .unregisterOnSharedPreferenceChangeListener(this);
-        super.onPause();
-    }
-
+    /**
+     * 바뀐 Activity에 대해 데이터 업데이트
+     */
     protected void updateDetectedActivitiesList() {
         accessGoogleFit();
-        ArrayList<DetectedActivity> detectedActivities = ActivityIntentService.detectedActivitiesFromJson(
-                PreferenceManager.getDefaultSharedPreferences(mContext)
-                        .getString(DETECTED_ACTIVITY, ""));
+        ArrayList<DetectedActivity> detectedActivities = ActivityIntentService.detectedActivitiesFromJson(PreferenceManager.getDefaultSharedPreferences(mContext).getString(DETECTED_ACTIVITY, ""));
 
-        StringBuilder sb = new StringBuilder();
         for (DetectedActivity activity : detectedActivities) {
-            sb.append(ActivityIntentService.getActivityString(this, activity.getType()) + "(" + activity.getConfidence() + "%),");
-        }
+            if (activity.getConfidence() >= THRESHOLD) {
+                String s = PreferenceManager.getDefaultSharedPreferences(this).getString(ACTIVITY_TIME, "0,0,0,0");
+                String[] sp = s.split(",");
+                long l;
+                long temp;
+                switch (activity.getType()) {
+                    case DetectedActivity.STILL:
+                        l = Long.parseLong(sp[0]);
+                        temp = System.currentTimeMillis();
+                        l += temp - tempTime;
+                        tempTime = temp;
+                        sp[0] = Long.toString(l);
+                        break;
+                    case DetectedActivity.WALKING:
+                        l = Long.parseLong(sp[1]);
+                        temp = System.currentTimeMillis();
+                        l += temp - tempTime;
+                        tempTime = temp;
+                        sp[1] = Long.toString(l);
+                        break;
+                    case DetectedActivity.RUNNING:
+                        l = Long.parseLong(sp[2]);
+                        temp = System.currentTimeMillis();
+                        l += temp - tempTime;
+                        tempTime = temp;
+                        sp[2] = Long.toString(l);
+                        break;
+                    case DetectedActivity.ON_FOOT:
+                        break;
+                    default:
+                        l = Long.parseLong(sp[3]);
+                        temp = System.currentTimeMillis();
+                        l += temp - tempTime;
+                        tempTime = temp;
+                        sp[3] = Long.toString(l);
+                        break;
+                }
 
-        updateText3(sb.toString());
+                PreferenceManager.getDefaultSharedPreferences(this).edit().putString(ACTIVITY_TIME, sp[0] + "," + sp[1] + "," + sp[2] + "," + sp[3]);
+
+                StringBuilder sb = new StringBuilder();
+                sb.append("S: " + sp[0] + "ms\n");
+                sb.append("W: " + sp[1] + "ms\n");
+                sb.append("R: " + sp[2] + "ms\n");
+                sb.append("Other: " + sp[3] + "ms");
+
+                updateText3(sb.toString());
+            }
+        }
     }
 
+    /**
+     * Activity Recognition 서비스의 Intent 반환
+     *
+     * @return Activity Recognition 서비스의 Intent
+     */
     private PendingIntent getActivityDetectionPendingIntent() {
         Intent intent = new Intent(this, ActivityIntentService.class);
         return PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
     }
 
-    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
+    /**
+     * Preference 데이터 변환 Listener
+     *
+     * @param sharedPreferences
+     * @param s                 이 값이 {@link #DETECTED_ACTIVITY}일 경우만 처리
+     */
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {// Preference 데이터 변화 Listener
         if (s.equals(DETECTED_ACTIVITY)) {
             updateDetectedActivitiesList();
         }
     }
 
-    private void updateText1(String s) {
+    /**
+     * 첫 번째 TextView 내용 삽입
+     *
+     * @param s 해당 내용
+     */
+    private void updateText1(String s) {// 첫 번째 TextView 내용 삽입
         TextView t = findViewById(R.id.textView10);
         t.setText(s);
     }
 
-    private void updateText2(String s) {
+    /**
+     * 두 번째 TextView 내용 삽입
+     *
+     * @param s 해당 내용
+     */
+    private void updateText2(String s) {//두 번째 TextView 내용 삽입
         TextView t = findViewById(R.id.textView12);
         t.setText(s);
     }
 
+    /**
+     * 세 번째 TextView 내용 삽입
+     *
+     * @param s 해당 내용
+     */
     private void updateText3(String s) {
         TextView t = findViewById(R.id.textView13);
         t.setText(s);
+    }
+
+    private String getText3() {
+        return ((TextView) findViewById(R.id.textView13)).getText().toString();
     }
 }
 
