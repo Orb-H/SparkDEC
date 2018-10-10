@@ -480,7 +480,7 @@ public class MainActivity extends AppCompatActivity
             }
         }
 
-        PreferenceManager.getDefaultSharedPreferences(this).edit().putString(ACTIVITY_TIME, sp[0] + "," + sp[1] + "," + sp[2] + "," + sp[3]);
+        PreferenceManager.getDefaultSharedPreferences(this).edit().putString(ACTIVITY_TIME, sp[0] + "," + sp[1] + "," + sp[2] + "," + sp[3]).apply();
 
         StringBuilder sb = new StringBuilder();
         sb.append("S: " + sp[0] + "ms\n");

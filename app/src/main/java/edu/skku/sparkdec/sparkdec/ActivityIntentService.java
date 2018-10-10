@@ -39,6 +39,7 @@ public class ActivityIntentService extends IntentService {
 
 //Get an array of DetectedActivity objects//
             ArrayList<DetectedActivity> detectedActivities = (ArrayList) result.getProbableActivities();
+
             PreferenceManager.getDefaultSharedPreferences(this)
                     .edit()
                     .putString(MainActivity.DETECTED_ACTIVITY,
