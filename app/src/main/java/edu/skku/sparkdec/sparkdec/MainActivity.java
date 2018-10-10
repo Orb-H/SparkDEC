@@ -62,7 +62,7 @@ import java.util.concurrent.TimeUnit;
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, SharedPreferences.OnSharedPreferenceChangeListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
     public static final String DETECTED_ACTIVITY = ".DETECTED_ACTIVITY";// Preference 데이터 Key
-    public static final String ACTIVITY_TIME = ".ACTIVITY_TIME";
+    public static final String STANDARD_TIME = ".STANDARD_TIME";
 
     private Context mContext;// 이 Activity의 Context
 
@@ -71,12 +71,6 @@ public class MainActivity extends AppCompatActivity
     private ActivityRecognitionClient mActivityRecognitionClient;
 
     private long startTime = Calendar.getInstance().getTimeInMillis();// 특정 경로에 대해 도보 시작 시간 저장
-    private long tempTime;// Activity Transition 사이의 시간 계산용 변수
-
-    /**
-     * Activity를 확정하기 위한 Confidence의 최소값
-     */
-    private final int THRESHOLD = 70;
 
     private GoogleSignInAccount mAccount;// 구글 계정 저장용 변수
     private boolean accountVerified = false;// 구글 계정으로 로그인 되어있는 상태인지 판별
@@ -420,7 +414,7 @@ public class MainActivity extends AppCompatActivity
      */
     public void startRecord() {
         startTime = Calendar.getInstance().getTimeInMillis();
-        tempTime = startTime;
+        PreferenceManager.getDefaultSharedPreferences(mContext).edit().putLong(STANDARD_TIME, startTime).apply();
     }
 
     @Override
@@ -436,59 +430,14 @@ public class MainActivity extends AppCompatActivity
      */
     protected void updateDetectedActivitiesList() {
         accessGoogleFit();
-        ArrayList<DetectedActivity> detectedActivities = ActivityIntentService.detectedActivitiesFromJson(PreferenceManager.getDefaultSharedPreferences(mContext).getString(DETECTED_ACTIVITY, ""));
-
-        String s = PreferenceManager.getDefaultSharedPreferences(this).getString(ACTIVITY_TIME, "0,0,0,0");
+        String s = PreferenceManager.getDefaultSharedPreferences(mContext).getString(DETECTED_ACTIVITY, "0,0,0,0");
         String[] sp = s.split(",");
 
-        for (DetectedActivity activity : detectedActivities) {
-            if (activity.getConfidence() >= THRESHOLD) {
-                long l;
-                long temp;
-                switch (activity.getType()) {
-                    case DetectedActivity.STILL:
-                        l = Long.parseLong(sp[0]);
-                        temp = System.currentTimeMillis();
-                        l += temp - tempTime;
-                        tempTime = temp;
-                        sp[0] = Long.toString(l);
-                        break;
-                    case DetectedActivity.WALKING:
-                        l = Long.parseLong(sp[1]);
-                        temp = System.currentTimeMillis();
-                        l += temp - tempTime;
-                        tempTime = temp;
-                        sp[1] = Long.toString(l);
-                        break;
-                    case DetectedActivity.RUNNING:
-                        l = Long.parseLong(sp[2]);
-                        temp = System.currentTimeMillis();
-                        l += temp - tempTime;
-                        tempTime = temp;
-                        sp[2] = Long.toString(l);
-                        break;
-                    case DetectedActivity.ON_FOOT:
-                        break;
-                    default:
-                        l = Long.parseLong(sp[3]);
-                        temp = System.currentTimeMillis();
-                        l += temp - tempTime;
-                        tempTime = temp;
-                        sp[3] = Long.toString(l);
-                        break;
-                }
-            }
-        }
-
-        PreferenceManager.getDefaultSharedPreferences(this).edit().putString(ACTIVITY_TIME, sp[0] + "," + sp[1] + "," + sp[2] + "," + sp[3]).apply();
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("S: " + sp[0] + "ms\n");
-        sb.append("W: " + sp[1] + "ms\n");
-        sb.append("R: " + sp[2] + "ms\n");
-        sb.append("Other: " + sp[3] + "ms");
-
-        updateText3(sb.toString());
+        String sb = "S: " + sp[0] + "ms\n" +
+                "W: " + sp[1] + "ms\n" +
+                "R: " + sp[2] + "ms\n" +
+                "Other: " + sp[3] + "ms";
+        updateText3(sb);
     }
 
     /**
