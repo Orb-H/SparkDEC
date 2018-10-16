@@ -45,6 +45,15 @@ import com.google.android.gms.fitness.request.DataReadRequest;
 import com.google.android.gms.fitness.result.DataReadResult;
 import com.google.android.gms.location.ActivityRecognitionClient;
 import com.google.android.gms.location.DetectedActivity;
+import com.google.android.gms.location.places.GeoDataClient;
+import com.google.android.gms.location.places.PlaceDetectionClient;
+import com.google.android.gms.location.places.Places;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
@@ -60,7 +69,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener, SharedPreferences.OnSharedPreferenceChangeListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
+        implements NavigationView.OnNavigationItemSelectedListener, SharedPreferences.OnSharedPreferenceChangeListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, OnMapReadyCallback {
     public static final String DETECTED_ACTIVITY = ".DETECTED_ACTIVITY";// Preference 데이터 Key
     public static final String STANDARD_TIME = ".STANDARD_TIME";
 
@@ -75,7 +84,11 @@ public class MainActivity extends AppCompatActivity
     private GoogleSignInAccount mAccount;// 구글 계정 저장용 변수
     private boolean accountVerified = false;// 구글 계정으로 로그인 되어있는 상태인지 판별
 
-    private GoogleApiClient mClient;
+    private GoogleApiClient mClient;private GoogleMap googleMap;
+
+    private GPSInfo gpsInfo;
+    protected GeoDataClient geoDataClient;
+    protected PlaceDetectionClient placeDetectionClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,6 +113,20 @@ public class MainActivity extends AppCompatActivity
                 this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawer.addDrawerListener(toggle);
         toggle.syncState();
+
+        //구글 지도 만드는 코드
+        //MapsInitializer.initialize(getApplicationContext());
+        gpsInfo = new GPSInfo(getApplicationContext());
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+
+        mapFragment.getMapAsync(this);
+
+        // Construct a GeoDataClient.
+        geoDataClient = Places.getGeoDataClient(this);
+
+        // Construct a PlaceDetectionClient.
+        placeDetectionClient = Places.getPlaceDetectionClient(this);
 
         /*SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
@@ -187,6 +214,20 @@ public class MainActivity extends AppCompatActivity
                         }
                     }
                 });
+    }
+
+    @Override
+    public void onMapReady(final GoogleMap map) {
+        initializeMap(map);
+    }
+
+    /*
+    Map이 처음
+     */
+    private void initializeMap(final GoogleMap googleMap){
+        LatLng nowWhere = new LatLng(gpsInfo.getLatitude(), gpsInfo.getLongitude());
+        googleMap.addMarker(new MarkerOptions().position(nowWhere).title("현재 위치"));
+        googleMap.moveCamera(CameraUpdateFactory.newLatLng(nowWhere));
     }
 
     public void onConnectionSuspended(int i) {
