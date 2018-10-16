@@ -44,7 +44,6 @@ import com.google.android.gms.fitness.data.Field;
 import com.google.android.gms.fitness.request.DataReadRequest;
 import com.google.android.gms.fitness.result.DataReadResult;
 import com.google.android.gms.location.ActivityRecognitionClient;
-import com.google.android.gms.location.DetectedActivity;
 import com.google.android.gms.location.places.GeoDataClient;
 import com.google.android.gms.location.places.PlaceDetectionClient;
 import com.google.android.gms.location.places.Places;
@@ -84,7 +83,8 @@ public class MainActivity extends AppCompatActivity
     private GoogleSignInAccount mAccount;// 구글 계정 저장용 변수
     private boolean accountVerified = false;// 구글 계정으로 로그인 되어있는 상태인지 판별
 
-    private GoogleApiClient mClient;private GoogleMap googleMap;
+    private GoogleApiClient mClient;
+    private GoogleMap googleMap;
 
     private GPSInfo gpsInfo;
     protected GeoDataClient geoDataClient;
@@ -187,13 +187,39 @@ public class MainActivity extends AppCompatActivity
                 }
             }
 
-            updateText2(count + " steps");
+            readRequest = new DataReadRequest.Builder()
+                    .aggregate(DataType.TYPE_DISTANCE_DELTA, DataType.AGGREGATE_DISTANCE_DELTA)
+                    .bucketByTime(1, TimeUnit.DAYS)
+                    .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+                    .build();
+
+            dataReadResult = Fitness.HistoryApi.readData(mClient, readRequest).await(1, TimeUnit.MINUTES);
+
+            long distance = 0;
+
+            if (dataReadResult.getBuckets().size() > 0) {
+                Log.e("History", "Number of buckets: " + dataReadResult.getBuckets().size());
+                for (Bucket bucket : dataReadResult.getBuckets()) {
+                    List<DataSet> dataSets = bucket.getDataSets();
+                    for (DataSet dataSet : dataSets) {
+                        if (dataSet.getDataType().equals(DataType.TYPE_DISTANCE_DELTA)) {
+                            if (!dataSet.isEmpty()) {
+                                distance += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
+                            }
+                            //count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
+                            Log.e("TEMP", dataSet.toString());
+                        }
+                    }
+                }
+            }
+
+            updateText2(count + " steps / " + distance + "m");
             return null;
         }
     }
 
     /**
-     * Google Fit API에 걸음 수 데이터 구독 요청
+     * Google Fit API에 걸음 수 및 거리 데이터 구독 요청
      */
     public void subscribe() {
         // To create a subscription, invoke the Recording API. As soon as the subscription is
@@ -202,6 +228,22 @@ public class MainActivity extends AppCompatActivity
                 .setResultCallback(new ResultCallback<Status>() {
                     @Override
                     public void onResult(Status status) {
+                        if (status.isSuccess()) {
+                            if (status.getStatusCode()
+                                    == FitnessStatusCodes.SUCCESS_ALREADY_SUBSCRIBED) {
+                                Log.e("TEMP", "Existing subscription for activity detected.");
+                            } else {
+                                Log.e("TEMP", "Successfully subscribed!");
+                            }
+                        } else {
+                            Log.e("TEMP", "There was a problem subscribing.");
+                        }
+                    }
+                });
+        Fitness.RecordingApi.subscribe(mClient, DataType.TYPE_DISTANCE_CUMULATIVE)
+                .setResultCallback(new ResultCallback<Status>() {
+                    @Override
+                    public void onResult(@NonNull Status status) {
                         if (status.isSuccess()) {
                             if (status.getStatusCode()
                                     == FitnessStatusCodes.SUCCESS_ALREADY_SUBSCRIBED) {
@@ -224,7 +266,7 @@ public class MainActivity extends AppCompatActivity
     /*
     Map이 처음
      */
-    private void initializeMap(final GoogleMap googleMap){
+    private void initializeMap(final GoogleMap googleMap) {
         LatLng nowWhere = new LatLng(gpsInfo.getLatitude(), gpsInfo.getLongitude());
         googleMap.addMarker(new MarkerOptions().position(nowWhere).title("현재 위치"));
         googleMap.moveCamera(CameraUpdateFactory.newLatLng(nowWhere));
@@ -296,6 +338,10 @@ public class MainActivity extends AppCompatActivity
         FitnessOptions fitnessOptions = FitnessOptions.builder()
                 .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
                 .addDataType(DataType.AGGREGATE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.TYPE_DISTANCE_DELTA, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.AGGREGATE_DISTANCE_DELTA, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.TYPE_SPEED, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.AGGREGATE_SPEED_SUMMARY, FitnessOptions.ACCESS_READ)
                 .build();
 
         startRecord();
@@ -311,8 +357,38 @@ public class MainActivity extends AppCompatActivity
         subscribe();
 
         try {
+            Calendar cal = Calendar.getInstance();
+            long endTime = cal.getTimeInMillis();
+            cal.add(Calendar.YEAR, -1);
+            long startTime = cal.getTimeInMillis();
+
             ArrayList<Double[]> d = pedestrianPath("126.9700634", "37.3001989", "126.9732337", "37.2939288", "성균관대역", "성균관대학교 반도체관");
-            updateText1(String.format("%.0f m", d.get(0)[1]) + "");
+            DataReadRequest readRequest = new DataReadRequest.Builder()
+                    .aggregate(DataType.TYPE_SPEED, DataType.AGGREGATE_SPEED_SUMMARY)
+                    .bucketByTime(10000, TimeUnit.DAYS)
+                    .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+                    .build();
+
+            DataReadResult dataReadResult = Fitness.HistoryApi.readData(mClient, readRequest).await(1, TimeUnit.MINUTES);
+
+            long count = 0;
+
+            if (dataReadResult.getBuckets().size() > 0) {
+                Log.e("History", "Number of buckets: " + dataReadResult.getBuckets().size());
+                for (Bucket bucket : dataReadResult.getBuckets()) {
+                    List<DataSet> dataSets = bucket.getDataSets();
+                    for (DataSet dataSet : dataSets) {
+                        if (dataSet.getDataType().equals(DataType.AGGREGATE_SPEED_SUMMARY)) {
+                            if (!dataSet.isEmpty()) {
+                                count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_SPEED).asInt();
+                            }
+                            //count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
+                            Log.e("TEMP", dataSet.toString());
+                        }
+                    }
+                }
+            }
+            updateText1(String.format("%.0f m", d.get(0)[1]) + " / (" + String.format("%.1f s", d.get(0)[1] / count) + " expected)");
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
