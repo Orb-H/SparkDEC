@@ -3,20 +3,30 @@ package edu.skku.sparkdec.sparkdec;
 import android.os.AsyncTask;
 import android.util.Log;
 
+import com.google.android.gms.maps.model.LatLng;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 
 import javax.net.ssl.HttpsURLConnection;
 
-public class GoogleDirection extends AsyncTask<String, Void, String> {
-    public final int TRANSIT_MODE_DRIVE = 0;
-    public final int TRANSIT_MODE_WALK = 1;
-    public final int TRANSIT_MODE_BICYCLE = 2;
-    public final int TRANSIT_MODE_TRANSIT = 3;
+public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> {
+    public static final int TRANSIT_MODE_DRIVE = 0;
+    public static final int TRANSIT_MODE_WALK = 1;
+    public static final int TRANSIT_MODE_BICYCLE = 2;
+    public static final int TRANSIT_MODE_TRANSIT = 3;
+    public int duration = 0;
+    public int distance = 0;
+
     private final String TRANSIT_PARSE[] = {"driving", "walking", "bicycling", "transit"};
 
 
@@ -47,7 +57,10 @@ public class GoogleDirection extends AsyncTask<String, Void, String> {
     }
 
     public void addAttributes(String key, String value) {
-        urlBuilder.append("&").append(key).append("=").append(value);
+        urlBuilder.append("&");
+        urlBuilder.append(key);
+        urlBuilder.append("=");
+        urlBuilder.append(value);
     }
 
     public void editAttributes(String key, String value) {
@@ -64,7 +77,7 @@ public class GoogleDirection extends AsyncTask<String, Void, String> {
         returnBuilder = new StringBuilder();
     }
 
-    protected String doInBackground(String... strings) {
+    protected ArrayList<LatLng> doInBackground(String... strings) {
         if (android.os.Debug.isDebuggerConnected())
             android.os.Debug.waitForDebugger();
         try {
@@ -75,7 +88,7 @@ public class GoogleDirection extends AsyncTask<String, Void, String> {
                 BufferedReader br = new BufferedReader(new InputStreamReader(connection.getErrorStream(), "UTF-8"));
                 String line = br.readLine();
                 Log.e("", line);
-                return Integer.toString(connection.getResponseCode()) + " : " + connection.getResponseMessage();
+                return null;
             }
             BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), "UTF-8"));
             String line;
@@ -84,10 +97,30 @@ public class GoogleDirection extends AsyncTask<String, Void, String> {
             }
         } catch (MalformedURLException e) {
             Log.e("URL 변환 에러", "In GoogleDirection url declaration");
+            return null;
         } catch (IOException e) {
             Log.e("IOException", "In GoogleDirection service connection");
+            return null;
         }
-        return returnBuilder.toString();
-
+        ArrayList<LatLng> returns = new ArrayList<>();
+        try {
+            JSONObject response = new JSONObject(returnBuilder.toString());
+            JSONObject routes = response.getJSONArray("routes").getJSONObject(1);
+            distance = routes.getJSONObject("distance").getInt("value");
+            duration = routes.getJSONObject("duration").getInt("value");
+            JSONArray legs = routes.getJSONArray("legs");
+            for (int i = 0; i < legs.length(); i++) {
+                JSONArray steps = legs.getJSONObject(i).getJSONArray("steps");
+                for (int j = 0; j < steps.length(); j++) {
+                    JSONObject temp = steps.getJSONObject(j);
+                    returns.add(new LatLng(temp.getJSONObject("start_location").getDouble("lat"), temp.getJSONObject("start_location").getDouble("lng")));
+                    returns.add(new LatLng(temp.getJSONObject("end_location").getDouble("lat"), temp.getJSONObject("end_location").getDouble("lng")));
+                }
+            }
+        } catch (JSONException e) {
+            Log.e("Error", "JSONException at GoogleDirection Response");
+            return null;
+        }
+        return returns;
     }
 }
