@@ -372,7 +372,7 @@ public class MainActivity extends AppCompatActivity
      * Request 요청 답
      */
     public void onRequestPermissionsResult(int requestCode,String permission[],int[] grantResults){
-        
+
     }
 
     /**
