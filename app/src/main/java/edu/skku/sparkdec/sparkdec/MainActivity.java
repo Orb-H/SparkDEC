@@ -343,6 +343,9 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * 전체 Request 체크
+     */
     private void requestPerm() {
         String[] request = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET, "com.google.android.gms.permission.ACTIVITY_RECOGNITION", Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
@@ -363,6 +366,13 @@ public class MainActivity extends AppCompatActivity
                 ActivityCompat.requestPermissions(this, new String[]{request}, requestId);
             }
         }
+    }
+
+    /**
+     * Request 요청 답
+     */
+    public void onRequestPermissionsResult(int requestCode,String permission[],int[] grantResults){
+        
     }
 
     /**
