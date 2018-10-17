@@ -58,6 +58,8 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
@@ -544,6 +546,17 @@ public class MainActivity extends AppCompatActivity
             e.printStackTrace();
             return null;
         }
+    }
+
+    /**
+     * @param positions 위도와 경도를 나타내는 클래스 LatLng로 이루어진 ArrayList. 그러니까 그릴 좌표
+     * @return 그렸다면 polyline 객체, 좌표가 1개 이하이면 그리지 못하고 null 반환.
+     */
+
+    public Polyline drawPolyLine(ArrayList<LatLng> positions) {
+        if (positions.size() < 2) return null;
+        Polyline polyline = googleMap.addPolyline(new PolylineOptions().addAll(positions));
+        return polyline;
     }
 
     /**
