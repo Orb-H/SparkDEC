@@ -342,12 +342,10 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void requestPerm() {
-        String[] request = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET, "", Manifest.permission.WRITE_EXTERNAL_STORAGE};
+        String[] request = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET, "com.google.android.gms.permission.ACTIVITY_RECOGNITION", Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
         for (int i = 0; i < 4; i++) {
-            if (!request[i].equals("")) {
-                requestPerm(request[i], i + 101);
-            }
+            requestPerm(request[i], i + 101);
         }
     }
 
