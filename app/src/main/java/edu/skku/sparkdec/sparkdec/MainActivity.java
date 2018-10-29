@@ -1,9 +1,11 @@
 package edu.skku.sparkdec.sparkdec;
 
+import android.Manifest;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -12,6 +14,8 @@ import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
@@ -43,6 +47,7 @@ import com.google.android.gms.fitness.data.DataType;
 import com.google.android.gms.fitness.data.Field;
 import com.google.android.gms.fitness.request.DataReadRequest;
 import com.google.android.gms.fitness.result.DataReadResult;
+import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.ActivityRecognitionClient;
 import com.google.android.gms.location.places.GeoDataClient;
 import com.google.android.gms.location.places.PlaceDetectionClient;
@@ -74,6 +79,10 @@ public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, SharedPreferences.OnSharedPreferenceChangeListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, OnMapReadyCallback {
     public static final String DETECTED_ACTIVITY = ".DETECTED_ACTIVITY";// Preference 데이터 Key
     public static final String STANDARD_TIME = ".STANDARD_TIME";
+    private static final int REQUEST_FINE_LOCATION = 101;// FINE_LOCATION Request code
+    private static final int REQUEST_INTERNET = 102;// INTERNET Request code
+    private static final int REQUEST_ACTIVITY_RECOGNITION = 103;// ACTIVITY_RECOGNITION Request code
+    private static final int REQUEST_WRITE_EXTERNAL_STORAGE = 104;//WRITE_EXTERNAL_STORAGE Request code
 
     private Context mContext;// 이 Activity의 Context
 
@@ -135,6 +144,8 @@ public class MainActivity extends AppCompatActivity
 
         mContext = this;
         mActivityRecognitionClient = new ActivityRecognitionClient(this);
+
+        requestPerm();
 
         mClient = new GoogleApiClient.Builder(this)
                 .addApi(Fitness.HISTORY_API)
@@ -349,6 +360,38 @@ public class MainActivity extends AppCompatActivity
             accountVerified = true;
             initGoogleFit();
         }
+    }
+
+    /**
+     * 전체 Request 체크
+     */
+    private void requestPerm() {
+        String[] request = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET, "com.google.android.gms.permission.ACTIVITY_RECOGNITION", Manifest.permission.WRITE_EXTERNAL_STORAGE};
+
+        for (int i = 0; i < 4; i++) {
+            requestPerm(request[i], i + 101);
+        }
+    }
+
+    /**
+     * Request 체크해서 없으면 권한 요청
+     */
+    private void requestPerm(String request, int requestId) {
+        int p = ContextCompat.checkSelfPermission(mContext, request);
+        if (p != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, request)) {
+
+            } else {
+                ActivityCompat.requestPermissions(this, new String[]{request}, requestId);
+            }
+        }
+    }
+
+    /**
+     * Request 요청 답
+     */
+    public void onRequestPermissionsResult(int requestCode,String permission[],int[] grantResults){
+
     }
 
     /**
