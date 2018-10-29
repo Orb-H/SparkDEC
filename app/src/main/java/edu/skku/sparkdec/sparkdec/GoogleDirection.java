@@ -34,24 +34,24 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
     private StringBuilder returnBuilder;
 
     /**
-     * @param sx   출발지의 위도
-     * @param sy   출발지의 경도
-     * @param ex   도착지의 위도
-     * @param ey   도착지의 경도
+     * @param sLat   출발지의 위도
+     * @param sLng   출발지의 경도
+     * @param eLat   도착지의 위도
+     * @param eLng   도착지의 경도
      * @param mode 이동 방법 [TRANSIT_MODE_DRIVE, TRANSIT_MODE_WALK, TRANSIT_MODE_BICYCLE, TRANSIT_MODE_TRANSIT]
      */
-    public GoogleDirection(double sx, double sy, double ex, double ey, int mode) {
+    public GoogleDirection(String sLat, String sLng, String eLat, String eLng, int mode, String key) {
         urlBuilder = new StringBuilder();
         urlBuilder.append("https://maps.googleapis.com/maps/api/directions/json?origin=");
-        urlBuilder.append(sx);
-        urlBuilder.append(", ");
-        urlBuilder.append(sy);
+        urlBuilder.append(sLat);
+        urlBuilder.append(",");
+        urlBuilder.append(sLng);
         urlBuilder.append("&destination=");
-        urlBuilder.append(ex);
-        urlBuilder.append(", ");
-        urlBuilder.append(ey);
+        urlBuilder.append(eLat);
+        urlBuilder.append(",");
+        urlBuilder.append(eLng);
         urlBuilder.append("&key=");
-        urlBuilder.append(R.string.google_maps_key);
+        urlBuilder.append(key);
         urlBuilder.append("&mode=");
         urlBuilder.append(TRANSIT_PARSE[mode]);
     }
@@ -82,6 +82,7 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
             android.os.Debug.waitForDebugger();
         try {
             URL url = new URL(urlBuilder.toString());
+            Log.d("url", url.toString());
             HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
             if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
                 Log.e("Http connection error", Integer.toString(connection.getResponseCode()) + " : " + connection.getResponseMessage());
@@ -103,14 +104,15 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
             return null;
         }
         ArrayList<LatLng> returns = new ArrayList<>();
+        Log.d("DirectionJson", returnBuilder.toString());
         try {
             JSONObject response = new JSONObject(returnBuilder.toString());
-            JSONObject routes = response.getJSONArray("routes").getJSONObject(1);
-            distance = routes.getJSONObject("distance").getInt("value");
-            duration = routes.getJSONObject("duration").getInt("value");
+            JSONObject routes = response.getJSONArray("routes").getJSONObject(0);
             JSONArray legs = routes.getJSONArray("legs");
             for (int i = 0; i < legs.length(); i++) {
                 JSONArray steps = legs.getJSONObject(i).getJSONArray("steps");
+                distance += legs.getJSONObject(i).getJSONObject("distance").getInt("value");
+                duration += legs.getJSONObject(i).getJSONObject("duration").getInt("value");
                 for (int j = 0; j < steps.length(); j++) {
                     JSONObject temp = steps.getJSONObject(j);
                     returns.add(new LatLng(temp.getJSONObject("start_location").getDouble("lat"), temp.getJSONObject("start_location").getDouble("lng")));

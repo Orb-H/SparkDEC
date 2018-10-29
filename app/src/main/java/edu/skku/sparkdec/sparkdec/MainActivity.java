@@ -49,6 +49,7 @@ import com.google.android.gms.location.places.PlaceDetectionClient;
 import com.google.android.gms.location.places.Places;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
@@ -117,11 +118,10 @@ public class MainActivity extends AppCompatActivity
         toggle.syncState();
 
         //구글 지도 만드는 코드
-        //MapsInitializer.initialize(getApplicationContext());
+        MapsInitializer.initialize(getApplicationContext());
         gpsInfo = new GPSInfo(getApplicationContext());
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
-
         mapFragment.getMapAsync(this);
 
         // Construct a GeoDataClient.
@@ -129,10 +129,6 @@ public class MainActivity extends AppCompatActivity
 
         // Construct a PlaceDetectionClient.
         placeDetectionClient = Places.getPlaceDetectionClient(this);
-
-        /*SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync((OnMapReadyCallback) this);*/
 
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
@@ -147,7 +143,19 @@ public class MainActivity extends AppCompatActivity
                 .addConnectionCallbacks(this)
                 .enableAutoManage(this, 0, this)
                 .build();
-
+        /*
+        GoogleDirection googleDirection = new GoogleDirection("37.3001989","126.9700634", "37.2939288","126.9732337", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
+        googleDirection.execute();
+        ArrayList<LatLng> latLngArrayList;
+        try{
+            latLngArrayList = googleDirection.get();
+            for(LatLng element : latLngArrayList)System.out.println(element.toString());
+            drawPolyLine(latLngArrayList);
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
+        */
         requestUpdatesHandler();
 
         requestGoogleSignIn();
@@ -263,6 +271,17 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onMapReady(final GoogleMap map) {
         initializeMap(map);
+        googleMap = map;
+        GoogleDirection googleDirection = new GoogleDirection("37.3001989", "126.9700634", "37.2939288", "126.9732337", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
+        googleDirection.execute();
+        ArrayList<LatLng> latLngArrayList;
+        try {
+            latLngArrayList = googleDirection.get();
+            for (LatLng element : latLngArrayList) System.out.println(element.toString());
+            drawPolyLine(latLngArrayList);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /*
@@ -563,7 +582,7 @@ public class MainActivity extends AppCompatActivity
         String s = PreferenceManager.getDefaultSharedPreferences(mContext).getString(DETECTED_ACTIVITY, "0,0,0,0");
         String[] sp = s.split(",");
 
-        String sb = "S: " + sp[0] + "ms\n" +
+        String sb = "S: " + sp[0] + "ms\n" +        //TODO: Here Is Error. IndexOutBoundsException.
                 "W: " + sp[1] + "ms\n" +
                 "R: " + sp[2] + "ms\n" +
                 "Other: " + sp[3] + "ms";
