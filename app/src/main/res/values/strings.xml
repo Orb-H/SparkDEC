@@ -14,11 +14,10 @@
     <string name="walking">W</string>
     <string name="vehicle">V</string>
     <string name="on_foot">F</string>
-    <string name="tilting">t</string>
+    <string name="tilting">T</string>
     <string name="unknown_activity">X</string>
     <string name="google_maps_key">AIzaSyCWtXE5HbLIe2xHLOjlSDQenBt5v3tQH08</string>
     <string name="oauth_key">519398029222-sipdq6qmov3l4opsc7siuos4aqs9jc8r.apps.googleusercontent.com</string>
     <string name="oauth_key_debug">519398029222-g5f57eh6atlonk4m9th28kmn0bq0as12.apps.googleusercontent.com</string>
     <string name="oauth_key_debug_web">519398029222-n67hminh2ccan88eobqfmci76okojrhu.apps.googleusercontent.com</string>
-    <string name="title_activity_data_show">DataShowActivity</string>
 </resources>

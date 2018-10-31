@@ -1,9 +1,11 @@
 package edu.skku.sparkdec.sparkdec;
 
+import android.Manifest;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -12,6 +14,8 @@ import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
@@ -43,8 +47,20 @@ import com.google.android.gms.fitness.data.DataType;
 import com.google.android.gms.fitness.data.Field;
 import com.google.android.gms.fitness.request.DataReadRequest;
 import com.google.android.gms.fitness.result.DataReadResult;
+import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.ActivityRecognitionClient;
-import com.google.android.gms.location.DetectedActivity;
+import com.google.android.gms.location.places.GeoDataClient;
+import com.google.android.gms.location.places.PlaceDetectionClient;
+import com.google.android.gms.location.places.Places;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapsInitializer;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
@@ -60,9 +76,13 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener, SharedPreferences.OnSharedPreferenceChangeListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
+        implements NavigationView.OnNavigationItemSelectedListener, SharedPreferences.OnSharedPreferenceChangeListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, OnMapReadyCallback {
     public static final String DETECTED_ACTIVITY = ".DETECTED_ACTIVITY";// Preference 데이터 Key
-    public static final String ACTIVITY_TIME = ".ACTIVITY_TIME";
+    public static final String STANDARD_TIME = ".STANDARD_TIME";
+    private static final int REQUEST_FINE_LOCATION = 101;// FINE_LOCATION Request code
+    private static final int REQUEST_INTERNET = 102;// INTERNET Request code
+    private static final int REQUEST_ACTIVITY_RECOGNITION = 103;// ACTIVITY_RECOGNITION Request code
+    private static final int REQUEST_WRITE_EXTERNAL_STORAGE = 104;//WRITE_EXTERNAL_STORAGE Request code
 
     private Context mContext;// 이 Activity의 Context
 
@@ -71,17 +91,16 @@ public class MainActivity extends AppCompatActivity
     private ActivityRecognitionClient mActivityRecognitionClient;
 
     private long startTime = Calendar.getInstance().getTimeInMillis();// 특정 경로에 대해 도보 시작 시간 저장
-    private long tempTime;// Activity Transition 사이의 시간 계산용 변수
-
-    /**
-     * Activity를 확정하기 위한 Confidence의 최소값
-     */
-    private final int THRESHOLD = 70;
 
     private GoogleSignInAccount mAccount;// 구글 계정 저장용 변수
     private boolean accountVerified = false;// 구글 계정으로 로그인 되어있는 상태인지 판별
 
     private GoogleApiClient mClient;
+    private GoogleMap googleMap;
+
+    private GPSInfo gpsInfo;
+    protected GeoDataClient geoDataClient;
+    protected PlaceDetectionClient placeDetectionClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -107,15 +126,26 @@ public class MainActivity extends AppCompatActivity
         drawer.addDrawerListener(toggle);
         toggle.syncState();
 
-        /*SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+        //구글 지도 만드는 코드
+        MapsInitializer.initialize(getApplicationContext());
+        gpsInfo = new GPSInfo(getApplicationContext());
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
-        mapFragment.getMapAsync((OnMapReadyCallback) this);*/
+        mapFragment.getMapAsync(this);
+
+        // Construct a GeoDataClient.
+        geoDataClient = Places.getGeoDataClient(this);
+
+        // Construct a PlaceDetectionClient.
+        placeDetectionClient = Places.getPlaceDetectionClient(this);
 
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
         mContext = this;
         mActivityRecognitionClient = new ActivityRecognitionClient(this);
+
+        requestPerm();
 
         mClient = new GoogleApiClient.Builder(this)
                 .addApi(Fitness.HISTORY_API)
@@ -124,7 +154,19 @@ public class MainActivity extends AppCompatActivity
                 .addConnectionCallbacks(this)
                 .enableAutoManage(this, 0, this)
                 .build();
-
+        /*
+        GoogleDirection googleDirection = new GoogleDirection("37.3001989","126.9700634", "37.2939288","126.9732337", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
+        googleDirection.execute();
+        ArrayList<LatLng> latLngArrayList;
+        try{
+            latLngArrayList = googleDirection.get();
+            for(LatLng element : latLngArrayList)System.out.println(element.toString());
+            drawPolyLine(latLngArrayList);
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
+        */
         requestUpdatesHandler();
 
         requestGoogleSignIn();
@@ -166,13 +208,39 @@ public class MainActivity extends AppCompatActivity
                 }
             }
 
-            updateText2(count + " steps");
+            readRequest = new DataReadRequest.Builder()
+                    .aggregate(DataType.TYPE_DISTANCE_DELTA, DataType.AGGREGATE_DISTANCE_DELTA)
+                    .bucketByTime(1, TimeUnit.DAYS)
+                    .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+                    .build();
+
+            dataReadResult = Fitness.HistoryApi.readData(mClient, readRequest).await(1, TimeUnit.MINUTES);
+
+            long distance = 0;
+
+            if (dataReadResult.getBuckets().size() > 0) {
+                Log.e("History", "Number of buckets: " + dataReadResult.getBuckets().size());
+                for (Bucket bucket : dataReadResult.getBuckets()) {
+                    List<DataSet> dataSets = bucket.getDataSets();
+                    for (DataSet dataSet : dataSets) {
+                        if (dataSet.getDataType().equals(DataType.TYPE_DISTANCE_DELTA)) {
+                            if (!dataSet.isEmpty()) {
+                                distance += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
+                            }
+                            //count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
+                            Log.e("TEMP", dataSet.toString());
+                        }
+                    }
+                }
+            }
+
+            updateText2(count + " steps / " + distance + "m");
             return null;
         }
     }
 
     /**
-     * Google Fit API에 걸음 수 데이터 구독 요청
+     * Google Fit API에 걸음 수 및 거리 데이터 구독 요청
      */
     public void subscribe() {
         // To create a subscription, invoke the Recording API. As soon as the subscription is
@@ -193,6 +261,47 @@ public class MainActivity extends AppCompatActivity
                         }
                     }
                 });
+        Fitness.RecordingApi.subscribe(mClient, DataType.TYPE_DISTANCE_CUMULATIVE)
+                .setResultCallback(new ResultCallback<Status>() {
+                    @Override
+                    public void onResult(@NonNull Status status) {
+                        if (status.isSuccess()) {
+                            if (status.getStatusCode()
+                                    == FitnessStatusCodes.SUCCESS_ALREADY_SUBSCRIBED) {
+                                Log.e("TEMP", "Existing subscription for activity detected.");
+                            } else {
+                                Log.e("TEMP", "Successfully subscribed!");
+                            }
+                        } else {
+                            Log.e("TEMP", "There was a problem subscribing.");
+                        }
+                    }
+                });
+    }
+
+    @Override
+    public void onMapReady(final GoogleMap map) {
+        initializeMap(map);
+        googleMap = map;
+        GoogleDirection googleDirection = new GoogleDirection("37.3001989", "126.9700634", "37.2939288", "126.9732337", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
+        googleDirection.execute();
+        ArrayList<LatLng> latLngArrayList;
+        try {
+            latLngArrayList = googleDirection.get();
+            for (LatLng element : latLngArrayList) System.out.println(element.toString());
+            drawPolyLine(latLngArrayList);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /*
+    Map이 처음
+     */
+    private void initializeMap(final GoogleMap googleMap) {
+        LatLng nowWhere = new LatLng(gpsInfo.getLatitude(), gpsInfo.getLongitude());
+        googleMap.addMarker(new MarkerOptions().position(nowWhere).title("현재 위치"));
+        googleMap.moveCamera(CameraUpdateFactory.newLatLng(nowWhere));
     }
 
     public void onConnectionSuspended(int i) {
@@ -254,6 +363,38 @@ public class MainActivity extends AppCompatActivity
     }
 
     /**
+     * 전체 Request 체크
+     */
+    private void requestPerm() {
+        String[] request = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET, "com.google.android.gms.permission.ACTIVITY_RECOGNITION", Manifest.permission.WRITE_EXTERNAL_STORAGE};
+
+        for (int i = 0; i < 4; i++) {
+            requestPerm(request[i], i + 101);
+        }
+    }
+
+    /**
+     * Request 체크해서 없으면 권한 요청
+     */
+    private void requestPerm(String request, int requestId) {
+        int p = ContextCompat.checkSelfPermission(mContext, request);
+        if (p != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, request)) {
+
+            } else {
+                ActivityCompat.requestPermissions(this, new String[]{request}, requestId);
+            }
+        }
+    }
+
+    /**
+     * Request 요청 답
+     */
+    public void onRequestPermissionsResult(int requestCode,String permission[],int[] grantResults){
+
+    }
+
+    /**
      * Google Fit과 관련 변수 초기화
      */
     private void initGoogleFit() {
@@ -261,6 +402,10 @@ public class MainActivity extends AppCompatActivity
         FitnessOptions fitnessOptions = FitnessOptions.builder()
                 .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
                 .addDataType(DataType.AGGREGATE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.TYPE_DISTANCE_DELTA, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.AGGREGATE_DISTANCE_DELTA, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.TYPE_SPEED, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.AGGREGATE_SPEED_SUMMARY, FitnessOptions.ACCESS_READ)
                 .build();
 
         startRecord();
@@ -276,8 +421,38 @@ public class MainActivity extends AppCompatActivity
         subscribe();
 
         try {
+            Calendar cal = Calendar.getInstance();
+            long endTime = cal.getTimeInMillis();
+            cal.add(Calendar.YEAR, -1);
+            long startTime = cal.getTimeInMillis();
+
             ArrayList<Double[]> d = pedestrianPath("126.9700634", "37.3001989", "126.9732337", "37.2939288", "성균관대역", "성균관대학교 반도체관");
-            updateText1(String.format("%.0f m", d.get(0)[1]) + "");
+            DataReadRequest readRequest = new DataReadRequest.Builder()
+                    .aggregate(DataType.TYPE_SPEED, DataType.AGGREGATE_SPEED_SUMMARY)
+                    .bucketByTime(10000, TimeUnit.DAYS)
+                    .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+                    .build();
+
+            DataReadResult dataReadResult = Fitness.HistoryApi.readData(mClient, readRequest).await(1, TimeUnit.MINUTES);
+
+            long count = 0;
+
+            if (dataReadResult.getBuckets().size() > 0) {
+                Log.e("History", "Number of buckets: " + dataReadResult.getBuckets().size());
+                for (Bucket bucket : dataReadResult.getBuckets()) {
+                    List<DataSet> dataSets = bucket.getDataSets();
+                    for (DataSet dataSet : dataSets) {
+                        if (dataSet.getDataType().equals(DataType.AGGREGATE_SPEED_SUMMARY)) {
+                            if (!dataSet.isEmpty()) {
+                                count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_SPEED).asInt();
+                            }
+                            //count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
+                            Log.e("TEMP", dataSet.toString());
+                        }
+                    }
+                }
+            }
+            updateText1(String.format("%.0f m", d.get(0)[1]) + " / (" + String.format("%.1f s", d.get(0)[1] / count) + " expected)");
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
@@ -403,6 +578,17 @@ public class MainActivity extends AppCompatActivity
     }
 
     /**
+     * @param positions 위도와 경도를 나타내는 클래스 LatLng로 이루어진 ArrayList. 그러니까 그릴 좌표
+     * @return 그렸다면 polyline 객체, 좌표가 1개 이하이면 그리지 못하고 null 반환.
+     */
+
+    public Polyline drawPolyLine(ArrayList<LatLng> positions) {
+        if (positions.size() < 2) return null;
+        Polyline polyline = googleMap.addPolyline(new PolylineOptions().addAll(positions));
+        return polyline;
+    }
+
+    /**
      * Activity Recognition API에 3초마다 체크 요청
      */
     public void requestUpdatesHandler() {
@@ -420,7 +606,7 @@ public class MainActivity extends AppCompatActivity
      */
     public void startRecord() {
         startTime = Calendar.getInstance().getTimeInMillis();
-        tempTime = startTime;
+        PreferenceManager.getDefaultSharedPreferences(mContext).edit().putLong(STANDARD_TIME, startTime).apply();
     }
 
     @Override
@@ -436,58 +622,14 @@ public class MainActivity extends AppCompatActivity
      */
     protected void updateDetectedActivitiesList() {
         accessGoogleFit();
-        ArrayList<DetectedActivity> detectedActivities = ActivityIntentService.detectedActivitiesFromJson(PreferenceManager.getDefaultSharedPreferences(mContext).getString(DETECTED_ACTIVITY, ""));
+        String s = PreferenceManager.getDefaultSharedPreferences(mContext).getString(DETECTED_ACTIVITY, "0,0,0,0");
+        String[] sp = s.split(",");
 
-        for (DetectedActivity activity : detectedActivities) {
-            if (activity.getConfidence() >= THRESHOLD) {
-                String s = PreferenceManager.getDefaultSharedPreferences(this).getString(ACTIVITY_TIME, "0,0,0,0");
-                String[] sp = s.split(",");
-                long l;
-                long temp;
-                switch (activity.getType()) {
-                    case DetectedActivity.STILL:
-                        l = Long.parseLong(sp[0]);
-                        temp = System.currentTimeMillis();
-                        l += temp - tempTime;
-                        tempTime = temp;
-                        sp[0] = Long.toString(l);
-                        break;
-                    case DetectedActivity.WALKING:
-                        l = Long.parseLong(sp[1]);
-                        temp = System.currentTimeMillis();
-                        l += temp - tempTime;
-                        tempTime = temp;
-                        sp[1] = Long.toString(l);
-                        break;
-                    case DetectedActivity.RUNNING:
-                        l = Long.parseLong(sp[2]);
-                        temp = System.currentTimeMillis();
-                        l += temp - tempTime;
-                        tempTime = temp;
-                        sp[2] = Long.toString(l);
-                        break;
-                    case DetectedActivity.ON_FOOT:
-                        break;
-                    default:
-                        l = Long.parseLong(sp[3]);
-                        temp = System.currentTimeMillis();
-                        l += temp - tempTime;
-                        tempTime = temp;
-                        sp[3] = Long.toString(l);
-                        break;
-                }
-
-                PreferenceManager.getDefaultSharedPreferences(this).edit().putString(ACTIVITY_TIME, sp[0] + "," + sp[1] + "," + sp[2] + "," + sp[3]);
-
-                StringBuilder sb = new StringBuilder();
-                sb.append("S: " + sp[0] + "ms\n");
-                sb.append("W: " + sp[1] + "ms\n");
-                sb.append("R: " + sp[2] + "ms\n");
-                sb.append("Other: " + sp[3] + "ms");
-
-                updateText3(sb.toString());
-            }
-        }
+        String sb = "S: " + sp[0] + "ms\n" +        //TODO: Here Is Error. IndexOutBoundsException.
+                "W: " + sp[1] + "ms\n" +
+                "R: " + sp[2] + "ms\n" +
+                "Other: " + sp[3] + "ms";
+        updateText3(sb);
     }
 
     /**

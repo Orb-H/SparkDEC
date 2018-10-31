@@ -18,6 +18,12 @@ import java.util.ArrayList;
 public class ActivityIntentService extends IntentService {
     protected static final String TAG = "Activity";
 
+    /**
+     * Activity를 확정하기 위한 Confidence의 최소값
+     */
+    private final int THRESHOLD = 70;
+    private long tempTime;// Activity Transition 사이의 시간 계산용 변수
+
     //Call the super IntentService constructor with the name for the worker thread//
     public ActivityIntentService() {
         super(TAG);
@@ -39,61 +45,48 @@ public class ActivityIntentService extends IntentService {
 
 //Get an array of DetectedActivity objects//
             ArrayList<DetectedActivity> detectedActivities = (ArrayList) result.getProbableActivities();
+
+            String s = PreferenceManager.getDefaultSharedPreferences(this).getString(MainActivity.DETECTED_ACTIVITY, "0,0,0,0");
+            String[] sp = s.split(",");
+
+            tempTime = PreferenceManager.getDefaultSharedPreferences(this).getLong(MainActivity.STANDARD_TIME, 0);
+            long l, temp = System.currentTimeMillis();
+
+            for (DetectedActivity da : detectedActivities) {
+                if (da.getConfidence() >= THRESHOLD) {
+                    switch (da.getType()) {
+                        case DetectedActivity.STILL:
+                            l = Long.parseLong(sp[0]);
+                            l += temp - tempTime;
+                            sp[0] = Long.toString(l);
+                            break;
+                        case DetectedActivity.WALKING:
+                            l = Long.parseLong(sp[1]);
+                            l += temp - tempTime;
+                            sp[1] = Long.toString(l);
+                            break;
+                        case DetectedActivity.RUNNING:
+                            l = Long.parseLong(sp[2]);
+                            l += temp - tempTime;
+                            sp[2] = Long.toString(l);
+                            break;
+                        default:
+                            l = Long.parseLong(sp[3]);
+                            l += temp - tempTime;
+                            sp[3] = Long.toString(l);
+                            break;
+                    }
+                }
+            }
+
+            tempTime = temp;
+
             PreferenceManager.getDefaultSharedPreferences(this)
                     .edit()
                     .putString(MainActivity.DETECTED_ACTIVITY,
-                            detectedActivitiesToJson(detectedActivities))
+                            sp[0] + "," + sp[1] + "," + sp[2] + "," + sp[3]).putLong(MainActivity.STANDARD_TIME, tempTime)
                     .apply();
 
         }
-    }
-//Convert the code for the detected activity type, into the corresponding string//
-
-    static String getActivityString(Context context, int detectedActivityType) {
-        Resources resources = context.getResources();
-        switch (detectedActivityType) {
-            case DetectedActivity.ON_BICYCLE:
-                return resources.getString(R.string.bicycle);
-            case DetectedActivity.RUNNING:
-                return resources.getString(R.string.running);
-            case DetectedActivity.STILL:
-                return resources.getString(R.string.still);
-            case DetectedActivity.WALKING:
-                return resources.getString(R.string.walking);
-            case DetectedActivity.IN_VEHICLE:
-                return resources.getString(R.string.vehicle);
-            case DetectedActivity.ON_FOOT:
-                return resources.getString(R.string.on_foot);
-            case DetectedActivity.TILTING:
-                return resources.getString(R.string.tilting);
-            default:
-                return resources.getString(R.string.unknown_activity);
-        }
-    }
-
-    static final int[] POSSIBLE_ACTIVITIES = {
-
-            DetectedActivity.STILL,
-            DetectedActivity.WALKING,
-            DetectedActivity.RUNNING,
-            DetectedActivity.IN_VEHICLE,
-            DetectedActivity.ON_BICYCLE,
-            DetectedActivity.UNKNOWN
-    };
-
-    static String detectedActivitiesToJson(ArrayList<DetectedActivity> detectedActivitiesList) {
-        Type type = new TypeToken<ArrayList<DetectedActivity>>() {
-        }.getType();
-        return new Gson().toJson(detectedActivitiesList, type);
-    }
-
-    static ArrayList<DetectedActivity> detectedActivitiesFromJson(String jsonArray) {
-        Type listType = new TypeToken<ArrayList<DetectedActivity>>() {
-        }.getType();
-        ArrayList<DetectedActivity> detectedActivities = new Gson().fromJson(jsonArray, listType);
-        if (detectedActivities == null) {
-            detectedActivities = new ArrayList<>();
-        }
-        return detectedActivities;
     }
 }
