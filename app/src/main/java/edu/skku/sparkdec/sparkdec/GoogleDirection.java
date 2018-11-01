@@ -34,10 +34,10 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
     private StringBuilder returnBuilder;
 
     /**
-     * @param sLat   출발지의 위도
-     * @param sLng   출발지의 경도
-     * @param eLat   도착지의 위도
-     * @param eLng   도착지의 경도
+     * @param sLat 출발지의 위도
+     * @param sLng 출발지의 경도
+     * @param eLat 도착지의 위도
+     * @param eLng 도착지의 경도
      * @param mode 이동 방법 [TRANSIT_MODE_DRIVE, TRANSIT_MODE_WALK, TRANSIT_MODE_BICYCLE, TRANSIT_MODE_TRANSIT]
      */
     public GoogleDirection(String sLat, String sLng, String eLat, String eLng, int mode, String key) {
@@ -70,19 +70,21 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
         urlBuilder.replace(start + key.length() + 1, end - 1, value);
     }
 
-    @Override
+    /*@Override
     protected void onPreExecute() {
         super.onPreExecute();
 
         returnBuilder = new StringBuilder();
-    }
+    }*/
 
     protected ArrayList<LatLng> doInBackground(String... strings) {
-        if (android.os.Debug.isDebuggerConnected())
-            android.os.Debug.waitForDebugger();
+        /*if (android.os.Debug.isDebuggerConnected())
+            android.os.Debug.waitForDebugger();*/
         try {
+            Log.e("TEMP","URL Building Start");
+            returnBuilder = new StringBuilder();
             URL url = new URL(urlBuilder.toString());
-            Log.d("url", url.toString());
+            Log.e("url", url.toString());
             HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
             if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
                 Log.e("Http connection error", Integer.toString(connection.getResponseCode()) + " : " + connection.getResponseMessage());
@@ -104,7 +106,7 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
             return null;
         }
         ArrayList<LatLng> returns = new ArrayList<>();
-        Log.d("DirectionJson", returnBuilder.toString());
+        Log.e("DirectionJson", returnBuilder.toString());
         try {
             JSONObject response = new JSONObject(returnBuilder.toString());
             JSONObject routes = response.getJSONArray("routes").getJSONObject(0);

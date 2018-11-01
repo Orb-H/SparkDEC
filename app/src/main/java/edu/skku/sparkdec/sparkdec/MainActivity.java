@@ -42,6 +42,7 @@ import com.google.android.gms.fitness.Fitness;
 import com.google.android.gms.fitness.FitnessOptions;
 import com.google.android.gms.fitness.FitnessStatusCodes;
 import com.google.android.gms.fitness.data.Bucket;
+import com.google.android.gms.fitness.data.DataPoint;
 import com.google.android.gms.fitness.data.DataSet;
 import com.google.android.gms.fitness.data.DataType;
 import com.google.android.gms.fitness.data.Field;
@@ -73,6 +74,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity
@@ -181,7 +184,6 @@ public class MainActivity extends AppCompatActivity
             long startTime = params[0];
             Log.e("TEMP", startTime + " " + endTime);
 
-//Check how many steps were walked and recorded in the last 7 days
             DataReadRequest readRequest = new DataReadRequest.Builder()
                     .aggregate(DataType.TYPE_STEP_COUNT_DELTA, DataType.AGGREGATE_STEP_COUNT_DELTA)
                     .bucketByTime(1, TimeUnit.DAYS)
@@ -239,6 +241,48 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    private class Speed extends AsyncTask<Void, Void, Float> {
+        public Float doInBackground(Void... params) {
+            float f = 0f;
+            Calendar c = Calendar.getInstance();
+            long l1 = c.getTimeInMillis();
+            c.add(Calendar.DATE, -7);
+            long l2 = c.getTimeInMillis();
+            Log.e("TEMP", "!");
+            DataReadRequest drr = new DataReadRequest.Builder()
+                    .read(DataType.AGGREGATE_SPEED_SUMMARY)
+                    .setTimeRange(l2, l1, TimeUnit.MILLISECONDS)
+                    .bucketByTime(7, TimeUnit.DAYS)
+                    .build();
+            Log.e("TEMP", "?");
+
+            DataReadResult dr = Fitness.HistoryApi.readData(mClient, drr).await(1, TimeUnit.MINUTES);
+
+            double speed;
+
+            if (dr.getBuckets().size() > 0) {
+                Log.e("TEMP", "!");
+                for (Bucket bucket : dr.getBuckets()) {
+                    Log.e("TEMP", "@");
+                    List<DataSet> ds = bucket.getDataSets();
+                    for (DataSet set : ds) {
+                        Log.e("TEMP", "#");
+                        if (set.getDataType().equals(DataType.AGGREGATE_SPEED_SUMMARY)) {
+                            List<DataPoint> l = set.getDataPoints();
+                            for (DataPoint dp : l) {
+                                Log.e("TEMP", dp.getValue(Field.FIELD_SPEED) + "");
+                            }
+                        }
+                    }
+                }
+            }
+            Log.e("TEMP", "!!");
+
+            updateText3(f + "");
+            return 0f;
+        }
+    }
+
     /**
      * Google Fit API에 걸음 수 및 거리 데이터 구독 요청
      */
@@ -277,22 +321,40 @@ public class MainActivity extends AppCompatActivity
                         }
                     }
                 });
+        Fitness.RecordingApi.subscribe(mClient, DataType.AGGREGATE_SPEED_SUMMARY)
+                .setResultCallback(new ResultCallback<Status>() {
+                    @Override
+                    public void onResult(@NonNull Status status) {
+                        if (status.isSuccess()) {
+                            if (status.getStatusCode()
+                                    == FitnessStatusCodes.SUCCESS_ALREADY_SUBSCRIBED) {
+                                Log.e("TEMP", "Existing subscription for activity detected.");
+                            } else {
+                                Log.e("TEMP", "Successfully subscribed!");
+                            }
+                        } else {
+                            Log.e("TEMP", "There was a problem subscribing.");
+                        }
+                    }
+                });
     }
 
     @Override
     public void onMapReady(final GoogleMap map) {
+        Log.e("TEMP","Map Ready");
         initializeMap(map);
         googleMap = map;
-        GoogleDirection googleDirection = new GoogleDirection("37.3001989", "126.9700634", "37.2939288", "126.9732337", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
-        googleDirection.execute();
+        /*GoogleDirection googleDirection = new GoogleDirection("37.3001989", "126.9700634", "37.2939288", "126.9732337", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
+        Log.e("TEMP","URL Ready");
         ArrayList<LatLng> latLngArrayList;
         try {
-            latLngArrayList = googleDirection.get();
+            latLngArrayList = googleDirection.execute().get();
             for (LatLng element : latLngArrayList) System.out.println(element.toString());
             drawPolyLine(latLngArrayList);
         } catch (Exception e) {
             e.printStackTrace();
-        }
+        }*/
+        Log.e("TEMP","Map Initialized");
     }
 
     /*
@@ -390,7 +452,7 @@ public class MainActivity extends AppCompatActivity
     /**
      * Request 요청 답
      */
-    public void onRequestPermissionsResult(int requestCode,String permission[],int[] grantResults){
+    public void onRequestPermissionsResult(int requestCode, String permission[], int[] grantResults) {
 
     }
 
@@ -420,24 +482,27 @@ public class MainActivity extends AppCompatActivity
 
         subscribe();
 
-        try {
-            Calendar cal = Calendar.getInstance();
-            long endTime = cal.getTimeInMillis();
-            cal.add(Calendar.YEAR, -1);
-            long startTime = cal.getTimeInMillis();
+        /*Calendar cal = Calendar.getInstance();
+        long endTime = cal.getTimeInMillis();
+        cal.add(Calendar.YEAR, -1);
+        long startTime = cal.getTimeInMillis();*/
 
-            ArrayList<Double[]> d = pedestrianPath("126.9700634", "37.3001989", "126.9732337", "37.2939288", "성균관대역", "성균관대학교 반도체관");
-            DataReadRequest readRequest = new DataReadRequest.Builder()
+        ArrayList<Double[]> d = null;
+        try {
+            Log.e("TEMP","Route find Request");
+            d = pedestrianPath("126.9700634", "37.3001989", "126.9732337", "37.2939288", "성균관대역", "성균관대학교 반도체관");
+            Log.e("TEMP","Route Found");
+
+            /*DataReadRequest readRequest = new DataReadRequest.Builder()
                     .aggregate(DataType.TYPE_SPEED, DataType.AGGREGATE_SPEED_SUMMARY)
                     .bucketByTime(10000, TimeUnit.DAYS)
                     .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
                     .build();
 
-            DataReadResult dataReadResult = Fitness.HistoryApi.readData(mClient, readRequest).await(1, TimeUnit.MINUTES);
-
+            DataReadResult dataReadResult = Fitness.HistoryApi.readData(mClient, readRequest).await(1, TimeUnit.MINUTES);*/
             long count = 0;
 
-            if (dataReadResult.getBuckets().size() > 0) {
+            /*if (dataReadResult.getBuckets().size() > 0) {
                 Log.e("History", "Number of buckets: " + dataReadResult.getBuckets().size());
                 for (Bucket bucket : dataReadResult.getBuckets()) {
                     List<DataSet> dataSets = bucket.getDataSets();
@@ -451,11 +516,13 @@ public class MainActivity extends AppCompatActivity
                         }
                     }
                 }
-            }
+            }*/
             updateText1(String.format("%.0f m", d.get(0)[1]) + " / (" + String.format("%.1f s", d.get(0)[1] / count) + " expected)");
+
+            //new Speed().execute();
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
-        }
+        }//FIXME: 제거
     }
 
     /**
@@ -625,11 +692,16 @@ public class MainActivity extends AppCompatActivity
         String s = PreferenceManager.getDefaultSharedPreferences(mContext).getString(DETECTED_ACTIVITY, "0,0,0,0");
         String[] sp = s.split(",");
 
-        String sb = "S: " + sp[0] + "ms\n" +        //TODO: Here Is Error. IndexOutBoundsException.
-                "W: " + sp[1] + "ms\n" +
-                "R: " + sp[2] + "ms\n" +
-                "Other: " + sp[3] + "ms";
-        updateText3(sb);
+        String sb = "";
+        try {
+            sb = "S: " + sp[0] + "ms\n" +        //TODO: Here Is Error. IndexOutBoundsException.
+                    "W: " + sp[1] + "ms\n" +
+                    "R: " + sp[2] + "ms\n" +
+                    "Other: " + sp[3] + "ms";
+        } catch (Exception e) {
+            sb = "S: 0ms\nW: 0ms\nR: 0ms\nOther: 0ms";
+        }
+        //updateText3(sb);
     }
 
     /**
