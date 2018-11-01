@@ -14,6 +14,14 @@ class TmapPedestrian extends AsyncTask<String, Void, String> {
     private String strUrl;
     private StringBuilder returnBuilder;
 
+    public int distance = 0;
+    public int duration = 0;
+
+
+    public TmapPedestrian(String sx, String sy, String ex, String ey, String startName, String endName) {
+
+    }
+
     @Override
     protected void onPreExecute() {
         super.onPreExecute();
@@ -52,11 +60,16 @@ class TmapPedestrian extends AsyncTask<String, Void, String> {
             while ((line = br.readLine()) != null) {
                 returnBuilder.append(line);
             }
+            br.close();
+            conn.disconnect();
         } catch (MalformedURLException e) {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        //parsing.
+
         return returnBuilder.toString();
     }
 }

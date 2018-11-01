@@ -56,6 +56,12 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
         urlBuilder.append(TRANSIT_PARSE[mode]);
     }
 
+    public void clear() {
+        urlBuilder = new StringBuilder("https://maps.googleapis.com/maps/api/directions/json?origin=");
+        duration = 0;
+        distance = 0;
+    }
+
     public void addAttributes(String key, String value) {
         urlBuilder.append("&");
         urlBuilder.append(key);
@@ -70,11 +76,20 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
         urlBuilder.replace(start + key.length() + 1, end - 1, value);
     }
 
+    public int getDistance() {
+        return distance;
+    }
+
+    public int getDuration() {
+        return duration;
+    }
+
     @Override
     protected void onPreExecute() {
         super.onPreExecute();
-
         returnBuilder = new StringBuilder();
+        duration = 0;
+        distance = 0;
     }
 
     protected ArrayList<LatLng> doInBackground(String... strings) {
@@ -96,6 +111,8 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
             while ((line = br.readLine()) != null) {
                 returnBuilder.append(line);
             }
+            br.close();
+            connection.disconnect();
         } catch (MalformedURLException e) {
             Log.e("URL 변환 에러", "In GoogleDirection url declaration");
             return null;

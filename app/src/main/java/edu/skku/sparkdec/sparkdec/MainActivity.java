@@ -47,7 +47,6 @@ import com.google.android.gms.fitness.data.DataType;
 import com.google.android.gms.fitness.data.Field;
 import com.google.android.gms.fitness.request.DataReadRequest;
 import com.google.android.gms.fitness.result.DataReadResult;
-import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.ActivityRecognitionClient;
 import com.google.android.gms.location.places.GeoDataClient;
 import com.google.android.gms.location.places.PlaceDetectionClient;
@@ -545,9 +544,6 @@ public class MainActivity extends AppCompatActivity
         final String requestValue = "startX=" + sx + "&startY=" + sy + "&endX=" + ex + "&endY=" + ey + "&reqCoordType=" + coordinate +
                 "&startName=" + URLEncoder.encode("출발지", "UTF-8") + "&endName=" + URLEncoder.encode("도착지", "UTF-8") + "&searchOption=" + option + "&resCoordType=" + coordinate;
 
-//        final String requestValue = "startX=" + sx + "&startY=" + sy + "&endX=" + ex + "&endY=" + ey + "&reqCoordType=" + coordinate +
-//                "&startName=" + URLEncoder.encode(startName, "UTF-8") + "&endName=" + URLEncoder.encode(endName, "UTF-8") + "&searchOption=" + option + "&resCoordType=" + coordinate;
-
         System.out.println(requestValue);
         try {
             String returnString = new TmapPedestrian().execute(requestValue).get();
@@ -625,7 +621,7 @@ public class MainActivity extends AppCompatActivity
         String s = PreferenceManager.getDefaultSharedPreferences(mContext).getString(DETECTED_ACTIVITY, "0,0,0,0");
         String[] sp = s.split(",");
 
-        String sb = "S: " + sp[0] + "ms\n" +        //TODO: Here Is Error. IndexOutBoundsException.
+        String sb = "S: " + sp[0] + "ms\n" +
                 "W: " + sp[1] + "ms\n" +
                 "R: " + sp[2] + "ms\n" +
                 "Other: " + sp[3] + "ms";
