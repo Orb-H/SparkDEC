@@ -20,8 +20,10 @@ import java.util.concurrent.ExecutionException;
 public class PathFinder extends AsyncTask<String, Void, ArrayList<LatLng>> {
     GoogleDirection googleDirection;
     TmapPedestrian pedestrian;
-    int duration;
-    int distance;
+    ArrayList<Integer> duration;
+    ArrayList<Integer> distance;
+    int dur = 0;
+    int dis = 0;
 
     public PathFinder(String sLat, String sLng, String eLat, String eLng, int mode, String key) {
         googleDirection = new GoogleDirection(sLat, sLng, eLat, eLng, mode, key);
@@ -30,7 +32,7 @@ public class PathFinder extends AsyncTask<String, Void, ArrayList<LatLng>> {
     @Override
     protected ArrayList<LatLng> doInBackground(String... strings) {
         googleDirection.execute();
-
+        Log.e("TEMP", "Call googleDirection");
         ArrayList<LatLng> retList = new ArrayList<>();
         ArrayList<LatLng> googleDir;
         try {
@@ -43,8 +45,10 @@ public class PathFinder extends AsyncTask<String, Void, ArrayList<LatLng>> {
             Log.d("At PathFinder Execution", "Interrupted");
             return null;
         }
+        Log.e("TEMP", "Call Tmap");
         for (int i = 0; i < googleDirection.transits.size(); i++) {
             if (googleDirection.transits.get(i).equals("WALKING")) {
+                Log.e("TEMP", Integer.toString(i));
                 pedestrian = new TmapPedestrian(Double.toString(googleDir.get(i).latitude), Double.toString(googleDir.get(i).longitude), Double.toString(googleDir.get(i + 1).latitude), Double.toString(googleDir.get(i + 1).longitude), "", "");
                 pedestrian.execute();
                 try {
@@ -55,8 +59,11 @@ public class PathFinder extends AsyncTask<String, Void, ArrayList<LatLng>> {
                         retList.add(ped.get(j + 1));
                     }
                     //TODO : 여기를 그 그 사용자별 예상 시간을 넣으셈
-                    distance += pedestrian.distance;
-                    duration += pedestrian.duration;
+                    distance.add(pedestrian.distance);
+                    duration.add(pedestrian.duration);
+
+                    dis += pedestrian.distance;
+                    dur += pedestrian.duration;
                 } catch (ExecutionException e) {
                     Log.e("At PathFinder Execution", "Can't Execute TmapPedestrian");
                     e.printStackTrace();
@@ -68,8 +75,10 @@ public class PathFinder extends AsyncTask<String, Void, ArrayList<LatLng>> {
             } else {
                 retList.add(googleDir.get(i * 2));
                 retList.add(googleDir.get(i * 2 + 1));
-                distance += googleDirection.distance.get(i);
-                duration += googleDirection.duration.get(i);
+                distance.add(googleDirection.distance.get(i));
+                duration.add(googleDirection.duration.get(i));
+                dis += googleDirection.distance.get(i);
+                dur += googleDirection.duration.get(i);
             }
         }
         return retList;

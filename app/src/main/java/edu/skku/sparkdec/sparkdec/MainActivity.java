@@ -1,6 +1,7 @@
 package edu.skku.sparkdec.sparkdec;
 
 import android.Manifest;
+import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -11,9 +12,7 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GravityCompat;
@@ -25,6 +24,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -33,6 +33,8 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
+import com.google.android.gms.common.GooglePlayServicesRepairableException;
 import com.google.android.gms.common.Scopes;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
@@ -50,8 +52,10 @@ import com.google.android.gms.fitness.request.DataReadRequest;
 import com.google.android.gms.fitness.result.DataReadResult;
 import com.google.android.gms.location.ActivityRecognitionClient;
 import com.google.android.gms.location.places.GeoDataClient;
+import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.PlaceDetectionClient;
 import com.google.android.gms.location.places.Places;
+import com.google.android.gms.location.places.ui.PlaceAutocomplete;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapsInitializer;
@@ -78,9 +82,9 @@ public class MainActivity extends AppCompatActivity
     private static final int REQUEST_INTERNET = 102;// INTERNET Request code
     private static final int REQUEST_ACTIVITY_RECOGNITION = 103;// ACTIVITY_RECOGNITION Request code
     private static final int REQUEST_WRITE_EXTERNAL_STORAGE = 104;//WRITE_EXTERNAL_STORAGE Request code
+    private int PLACE_AUTOCOMPLETE_REQUEST_CODE = 1;
 
     private Context mContext;// 이 Activity의 Context
-
     private final int RC_SIGN_IN = 100;// 구글 로그인 Intent request code
 
     private ActivityRecognitionClient mActivityRecognitionClient;
@@ -96,78 +100,24 @@ public class MainActivity extends AppCompatActivity
     private GPSInfo gpsInfo;
     protected GeoDataClient geoDataClient;
     protected PlaceDetectionClient placeDetectionClient;
+    private Activity mainActivity;
+    Button.OnFocusChangeListener searchBtnListener = new View.OnFocusChangeListener() {
+        @Override
+        public void onFocusChange(View v, boolean hasFocus) {
+            if (hasFocus) {
+                try {
+                    Intent intent = new PlaceAutocomplete.IntentBuilder(PlaceAutocomplete.MODE_OVERLAY).build(mainActivity);
+                    startActivityForResult(intent, PLACE_AUTOCOMPLETE_REQUEST_CODE);
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-
-        FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+                } catch (GooglePlayServicesRepairableException e) {
+                    e.printStackTrace();
+                } catch (GooglePlayServicesNotAvailableException e) {
+                    e.printStackTrace();
+                }
             }
-        });
-        //findViewById(R.id.nav_statistics).setSelected(true);
-
-        DrawerLayout drawer = findViewById(R.id.drawer_layout);
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-        drawer.addDrawerListener(toggle);
-        toggle.syncState();
-
-        //구글 지도 만드는 코드
-        MapsInitializer.initialize(getApplicationContext());
-        gpsInfo = new GPSInfo(getApplicationContext());
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
-
-        // Construct a GeoDataClient.
-        geoDataClient = Places.getGeoDataClient(this);
-
-        // Construct a PlaceDetectionClient.
-        placeDetectionClient = Places.getPlaceDetectionClient(this);
-
-        NavigationView navigationView = findViewById(R.id.nav_view);
-        navigationView.setNavigationItemSelectedListener(this);
-
-        mContext = this;
-        mActivityRecognitionClient = new ActivityRecognitionClient(this);
-
-        requestPerm();
-
-        mClient = new GoogleApiClient.Builder(this)
-                .addApi(Fitness.HISTORY_API)
-                .addApi(Fitness.RECORDING_API)
-                .addScope(new Scope(Scopes.FITNESS_ACTIVITY_READ))
-                .addConnectionCallbacks(this)
-                .enableAutoManage(this, 0, this)
-                .build();
-
-        PreferenceManager.getDefaultSharedPreferences(this).edit().putString(MainActivity.DETECTED_ACTIVITY, "0,0,0,0").apply();
-        /*
-        GoogleDirection googleDirection = new GoogleDirection("37.3001989","126.9700634", "37.2939288","126.9732337", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
-        googleDirection.execute();
-        ArrayList<LatLng> latLngArrayList;
-        try{
-            latLngArrayList = googleDirection.get();
-            for(LatLng element : latLngArrayList)System.out.println(element.toString());
-            drawPolyLine(latLngArrayList);
         }
-        catch(Exception e){
-            e.printStackTrace();
-        }
-        */
-        requestUpdatesHandler();
 
-        requestGoogleSignIn();
-    }
+    };
 
     /**
      * Google Fit으로부터 특정 시간동안의 걸음 수 요청하는 AsyncTask
@@ -309,6 +259,95 @@ public class MainActivity extends AppCompatActivity
                 });
     }
 
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        mainActivity = this;
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        //findViewById(R.id.nav_statistics).setSelected(true);
+
+        DrawerLayout drawer = findViewById(R.id.drawer_layout);
+        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+        drawer.addDrawerListener(toggle);
+        toggle.syncState();
+
+        //구글 지도 만드는 코드
+        MapsInitializer.initialize(getApplicationContext());
+        gpsInfo = new GPSInfo(getApplicationContext());
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
+
+        // Construct a GeoDataClient.
+        geoDataClient = Places.getGeoDataClient(this);
+
+        // Construct a PlaceDetectionClient.
+        placeDetectionClient = Places.getPlaceDetectionClient(this);
+
+        NavigationView navigationView = findViewById(R.id.nav_view);
+        navigationView.setNavigationItemSelectedListener(this);
+
+        mContext = this;
+        mActivityRecognitionClient = new ActivityRecognitionClient(this);
+
+        requestPerm();
+
+        mClient = new GoogleApiClient.Builder(this)
+                .addApi(Fitness.HISTORY_API)
+                .addApi(Fitness.RECORDING_API)
+                .addScope(new Scope(Scopes.FITNESS_ACTIVITY_READ))
+                .addConnectionCallbacks(this)
+                .enableAutoManage(this, 0, this)
+                .build();
+
+        PreferenceManager.getDefaultSharedPreferences(this).edit().putString(MainActivity.DETECTED_ACTIVITY, "0,0,0,0").apply();
+
+
+        findViewById(R.id.destPosText).setOnFocusChangeListener(searchBtnListener);
+        findViewById(R.id.startPosText).setOnFocusChangeListener(searchBtnListener);
+        /*
+        GoogleDirection googleDirection = new GoogleDirection("37.3001989","126.9700634", "37.2939288","126.9732337", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
+        googleDirection.execute();
+        ArrayList<LatLng> latLngArrayList;
+        try{
+            latLngArrayList = googleDirection.get();
+            for(LatLng element : latLngArrayList)System.out.println(element.toString());
+            drawPolyLine(latLngArrayList);
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
+        */
+        requestUpdatesHandler();
+
+        requestGoogleSignIn();
+    }
+
+    /*
+    Map이 처음
+     */
+    private void initializeMap(final GoogleMap googleMap) {
+        LatLng nowWhere = new LatLng(gpsInfo.getLatitude(), gpsInfo.getLongitude());
+        googleMap.addMarker(new MarkerOptions().position(nowWhere).title("현재 위치"));
+        googleMap.moveCamera(CameraUpdateFactory.newLatLng(nowWhere));
+    }
+
+    public void onConnectionSuspended(int i) {
+        Log.e("HistoryAPI", "onConnectionSuspended");
+    }
+
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        Log.e("HistoryAPI", "onConnectionFailed");
+    }
+
+    public void onConnected(@Nullable Bundle bundle) {
+        Log.e("HistoryAPI", "onConnected");
+    }
+
     /**
      * Google Fit과 관련 변수 초기화
      */
@@ -346,6 +385,7 @@ public class MainActivity extends AppCompatActivity
             PathFinder pf = new PathFinder("126.9700634", "37.3001989", "126.9732337", "37.2939288", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
             pf.execute();
             d = pf.get();
+            drawPolyLine(d);
             Log.e("TEMP", "Route Found");
 
             /*DataReadRequest readRequest = new DataReadRequest.Builder()
@@ -378,62 +418,14 @@ public class MainActivity extends AppCompatActivity
 
             float s = new Speed().execute().get();
             if (s >= 2 && s < 10) {
-                updateText1(String.format("%.0f m", pf.distance) + " / " + String.format("%.0f s", pf.duration) + " (Expected: " + String.format("%.0f s", pf.distance / s) + ")");
+                //    updateText1(String.format("%.0f m", pf.dis) + " / " + String.format("%.0f s", pf.dur) + " (Expected: " + String.format("%.0f s", pf.dis / s) + ")");
             } else {
-                updateText1(String.format("%.0f m", pf.distance) + " / " + String.format("%.0f s", pf.duration) + " (Expected: " + String.format("%.0f s", pf.distance / 1.25) + ")");
-            }
+                //    updateText1(String.format("%.0f m", pf.dis) + " / " + String.format("%.0f s", pf.dur) + " (Expected: " + String.format("%.0f s", pf.dis / 1.25) + ")");
+            }//FIXME: 배열로 고치기
 
         } catch (Exception e) {
             e.printStackTrace();
         }//FIXME: 제거
-    }
-
-    /*
-    Map이 처음
-     */
-    private void initializeMap(final GoogleMap googleMap) {
-        LatLng nowWhere = new LatLng(gpsInfo.getLatitude(), gpsInfo.getLongitude());
-        googleMap.addMarker(new MarkerOptions().position(nowWhere).title("현재 위치"));
-        googleMap.moveCamera(CameraUpdateFactory.newLatLng(nowWhere));
-    }
-
-    public void onConnectionSuspended(int i) {
-        Log.e("HistoryAPI", "onConnectionSuspended");
-    }
-
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        Log.e("HistoryAPI", "onConnectionFailed");
-    }
-
-    public void onConnected(@Nullable Bundle bundle) {
-        Log.e("HistoryAPI", "onConnected");
-    }
-
-    /**
-     * 구글 로그인 Activity에 대해서만 작동
-     *
-     * @param requestCode RC_SIGN_IN인 경우만 체크
-     * @param resultCode
-     * @param data
-     */
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        // Result returned from launching the Intent from GoogleSignInClient.getSignInIntent(...);
-        if (requestCode == RC_SIGN_IN) {
-            // The Task returned from this call is always completed, no need to attach
-            // a listener.
-            if (resultCode == 0 || resultCode == -1) {
-                Log.e("TEMP", resultCode + "");
-                Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
-                mAccount = task.getResult();
-                accountVerified = true;
-                initGoogleFit();
-            } else {
-                Toast.makeText(this, "Due to unknown reason, google login failed. Please retry.", Toast.LENGTH_LONG).show();
-                requestGoogleSignIn();
-            }
-        }
     }
 
     /**
@@ -767,5 +759,51 @@ public class MainActivity extends AppCompatActivity
     private String getText3() {
         return ((TextView) findViewById(R.id.textView13)).getText().toString();
     }
+
+    /**
+     * 구글 로그인 Activity에 대해서만 작동
+     *
+     * @param requestCode RC_SIGN_IN인 경우만 체크
+     * @param resultCode
+     * @param data
+     */
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        // Result returned from launching the Intent from GoogleSignInClient.getSignInIntent(...);
+        if (requestCode == RC_SIGN_IN) {
+            // The Task returned from this call is always completed, no need to attach
+            // a listener.
+            if (resultCode == 0 || resultCode == -1) {
+                Log.e("TEMP", resultCode + "");
+                Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
+                mAccount = task.getResult();
+                accountVerified = true;
+                initGoogleFit();
+            } else {
+                Toast.makeText(this, "Due to unknown reason, google login failed. Please retry.", Toast.LENGTH_LONG).show();
+                requestGoogleSignIn();
+            }
+        }
+
+        if (requestCode == PLACE_AUTOCOMPLETE_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                Place place = PlaceAutocomplete.getPlace(this, data);
+                Log.i("AutoComplete", "Place: " + place.getName());
+            } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
+                Status status = PlaceAutocomplete.getStatus(this, data);
+                // TODO: Handle the error.
+                Log.i("AutoComplete", status.getStatusMessage());
+
+            } else if (resultCode == RESULT_CANCELED) {
+                // The user canceled the operation.
+            }
+        }
+
+    }
+
+
+
+
 }
 

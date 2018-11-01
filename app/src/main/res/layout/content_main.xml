@@ -171,6 +171,7 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/startListLayout"
             android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -187,13 +188,16 @@
                 android:layout_weight="0.6"
                 android:background="#FFFFFF" />
 
-            <Space
+            <Button
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="0.3" />
+                android:layout_weight="0.3"
+                android:background="#00ff0000"
+                android:onClick="hideLayoutBtn" />
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/destListLayout"
             android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -210,10 +214,12 @@
                 android:layout_weight="0.6"
                 android:background="#FFFFFF" />
 
-            <Space
+            <Button
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="0.2" />
+                android:layout_weight="0.2"
+                android:background="#00ff0000"
+                android:onClick="hideLayoutBtn" />
         </LinearLayout>
 
     </FrameLayout>
