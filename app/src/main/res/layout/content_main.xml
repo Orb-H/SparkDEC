@@ -32,7 +32,8 @@
                     android:layout_height="match_parent"
                     android:layout_weight="0.8"
                     android:inputType="textPersonName"
-                    android:text="시작 지점" />
+                    android:textColor="#000"
+                    android:hint="시작 지점" />
 
                 <Button
                     android:id="@+id/startPosBtn"
@@ -53,9 +54,9 @@
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="0.8"
-                    android:ems="10"
                     android:inputType="textPersonName"
-                    android:text="도착 지점" />
+                    android:textColor="#000"
+                    android:hint="도착 지점" />
 
                 <Button
                     android:id="@+id/destPosBtn"
