@@ -48,7 +48,6 @@ import com.google.android.gms.fitness.data.DataType;
 import com.google.android.gms.fitness.data.Field;
 import com.google.android.gms.fitness.request.DataReadRequest;
 import com.google.android.gms.fitness.result.DataReadResult;
-import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.ActivityRecognitionClient;
 import com.google.android.gms.location.places.GeoDataClient;
 import com.google.android.gms.location.places.PlaceDetectionClient;
@@ -65,17 +64,10 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity
@@ -243,46 +235,22 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    private class Speed extends AsyncTask<Void, Void, Float> {
-        public Float doInBackground(Void... params) {
-            float f = 0f;
-            Calendar c = Calendar.getInstance();
-            long l1 = c.getTimeInMillis();
-            c.add(Calendar.DATE, -7);
-            long l2 = c.getTimeInMillis();
-            Log.e("TEMP", "!");
-            DataReadRequest drr = new DataReadRequest.Builder()
-                    .read(DataType.AGGREGATE_SPEED_SUMMARY)
-                    .setTimeRange(l2, l1, TimeUnit.MILLISECONDS)
-                    .bucketByTime(7, TimeUnit.DAYS)
-                    .build();
-            Log.e("TEMP", "?");
-
-            DataReadResult dr = Fitness.HistoryApi.readData(mClient, drr).await(5, TimeUnit.SECONDS);
-
-            double speed;
-
-            if (dr.getBuckets().size() > 0) {
-                Log.e("TEMP", "!");
-                for (Bucket bucket : dr.getBuckets()) {
-                    Log.e("TEMP", "@");
-                    List<DataSet> ds = bucket.getDataSets();
-                    for (DataSet set : ds) {
-                        Log.e("TEMP", "#");
-                        if (set.getDataType().equals(DataType.AGGREGATE_SPEED_SUMMARY)) {
-                            List<DataPoint> l = set.getDataPoints();
-                            for (DataPoint dp : l) {
-                                Log.e("TEMP", dp.getValue(Field.FIELD_SPEED) + "");
-                            }
-                        }
-                    }
-                }
-            }
-            Log.e("TEMP", "!!");
-
-            updateText3(f + "");
-            return 0f;
-        }
+    @Override
+    public void onMapReady(final GoogleMap map) {
+        Log.e("TEMP", "Map Ready");
+        initializeMap(map);
+        googleMap = map;
+        /*GoogleDirection googleDirection = new GoogleDirection("37.3001989", "126.9700634", "37.2939288", "126.9732337", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
+        Log.e("TEMP","URL Ready");
+        ArrayList<LatLng> latLngArrayList;
+        try {
+            latLngArrayList = googleDirection.execute().get();
+            for (LatLng element : latLngArrayList) System.out.println(element.toString());
+            drawPolyLine(latLngArrayList);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }*/
+        Log.e("TEMP", "Map Initialized");
     }
 
     /**
@@ -341,22 +309,83 @@ public class MainActivity extends AppCompatActivity
                 });
     }
 
-    @Override
-    public void onMapReady(final GoogleMap map) {
-        Log.e("TEMP", "Map Ready");
-        initializeMap(map);
-        googleMap = map;
-        /*GoogleDirection googleDirection = new GoogleDirection("37.3001989", "126.9700634", "37.2939288", "126.9732337", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
-        Log.e("TEMP","URL Ready");
-        ArrayList<LatLng> latLngArrayList;
+    /**
+     * Google Fit과 관련 변수 초기화
+     */
+    private void initGoogleFit() {
+        //Fitness API Initialize
+        FitnessOptions fitnessOptions = FitnessOptions.builder()
+                .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.AGGREGATE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.TYPE_DISTANCE_DELTA, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.AGGREGATE_DISTANCE_DELTA, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.TYPE_SPEED, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.AGGREGATE_SPEED_SUMMARY, FitnessOptions.ACCESS_READ)
+                .build();
+
+        startRecord();
+
+        if (!GoogleSignIn.hasPermissions(mAccount, fitnessOptions)) {
+            GoogleSignIn.requestPermissions(
+                    this, // your activity
+                    0,
+                    mAccount,
+                    fitnessOptions);
+        }
+
+        subscribe();
+
+        /*Calendar cal = Calendar.getInstance();
+        long endTime = cal.getTimeInMillis();
+        cal.add(Calendar.YEAR, -1);
+        long startTime = cal.getTimeInMillis();*/
+
+        ArrayList<LatLng> d;
         try {
-            latLngArrayList = googleDirection.execute().get();
-            for (LatLng element : latLngArrayList) System.out.println(element.toString());
-            drawPolyLine(latLngArrayList);
+            Log.e("TEMP", "Route find Request");
+            PathFinder pf = new PathFinder("126.9700634", "37.3001989", "126.9732337", "37.2939288", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
+            pf.execute();
+            d = pf.get();
+            Log.e("TEMP", "Route Found");
+
+            /*DataReadRequest readRequest = new DataReadRequest.Builder()
+                    .aggregate(DataType.TYPE_SPEED, DataType.AGGREGATE_SPEED_SUMMARY)
+                    .bucketByTime(10000, TimeUnit.DAYS)
+                    .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+                    .build();
+
+            DataReadResult dataReadResult = Fitness.HistoryApi.readData(mClient, readRequest).await(1, TimeUnit.MINUTES);*/
+            long count = 0;
+
+            /*if (dataReadResult.getBuckets().size() > 0) {
+                Log.e("History", "Number of buckets: " + dataReadResult.getBuckets().size());
+                for (Bucket bucket : dataReadResult.getBuckets()) {
+                    List<DataSet> dataSets = bucket.getDataSets();
+                    for (DataSet dataSet : dataSets) {
+                        if (dataSet.getDataType().equals(DataType.AGGREGATE_SPEED_SUMMARY)) {
+                            if (!dataSet.isEmpty()) {
+                                count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_SPEED).asInt();
+                            }
+                            //count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
+                            Log.e("TEMP", dataSet.toString());
+                        }
+                    }
+                }
+            }*/
+
+
+            //new Speed().execute();
+
+            float s = new Speed().execute().get();
+            if (s >= 2 && s < 10) {
+                updateText1(String.format("%.0f m", pf.distance) + " / " + String.format("%.0f s", pf.duration) + " (Expected: " + String.format("%.0f s", pf.distance / s) + ")");
+            } else {
+                updateText1(String.format("%.0f m", pf.distance) + " / " + String.format("%.0f s", pf.duration) + " (Expected: " + String.format("%.0f s", pf.distance / 1.25) + ")");
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
-        }*/
-        Log.e("TEMP", "Map Initialized");
+        }//FIXME: 제거
     }
 
     /*
@@ -458,78 +487,46 @@ public class MainActivity extends AppCompatActivity
 
     }
 
-    /**
-     * Google Fit과 관련 변수 초기화
-     */
-    private void initGoogleFit() {
-        //Fitness API Initialize
-        FitnessOptions fitnessOptions = FitnessOptions.builder()
-                .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
-                .addDataType(DataType.AGGREGATE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
-                .addDataType(DataType.TYPE_DISTANCE_DELTA, FitnessOptions.ACCESS_READ)
-                .addDataType(DataType.AGGREGATE_DISTANCE_DELTA, FitnessOptions.ACCESS_READ)
-                .addDataType(DataType.TYPE_SPEED, FitnessOptions.ACCESS_READ)
-                .addDataType(DataType.AGGREGATE_SPEED_SUMMARY, FitnessOptions.ACCESS_READ)
-                .build();
-
-        startRecord();
-
-        if (!GoogleSignIn.hasPermissions(mAccount, fitnessOptions)) {
-            GoogleSignIn.requestPermissions(
-                    this, // your activity
-                    0,
-                    mAccount,
-                    fitnessOptions);
-        }
-
-        subscribe();
-
-        /*Calendar cal = Calendar.getInstance();
-        long endTime = cal.getTimeInMillis();
-        cal.add(Calendar.YEAR, -1);
-        long startTime = cal.getTimeInMillis();*/
-
-        ArrayList<Double[]> d = null;
-        try {
-            Log.e("TEMP", "Route find Request");
-            d = pedestrianPath("126.9700634", "37.3001989", "126.9732337", "37.2939288", "성균관대역", "성균관대학교 반도체관");
-            Log.e("TEMP", "Route Found");
-
-            /*DataReadRequest readRequest = new DataReadRequest.Builder()
-                    .aggregate(DataType.TYPE_SPEED, DataType.AGGREGATE_SPEED_SUMMARY)
-                    .bucketByTime(10000, TimeUnit.DAYS)
-                    .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+    private class Speed extends AsyncTask<Void, Void, Float> {
+        public Float doInBackground(Void... params) {
+            float f = 0f;
+            Calendar c = Calendar.getInstance();
+            long l1 = c.getTimeInMillis();
+            c.add(Calendar.DATE, -7);
+            long l2 = c.getTimeInMillis();
+            Log.e("TEMP", "!");
+            DataReadRequest drr = new DataReadRequest.Builder()
+                    .read(DataType.AGGREGATE_SPEED_SUMMARY)
+                    .setTimeRange(l2, l1, TimeUnit.MILLISECONDS)
+                    .bucketByTime(7, TimeUnit.DAYS)
                     .build();
+            Log.e("TEMP", "?");
 
-            DataReadResult dataReadResult = Fitness.HistoryApi.readData(mClient, readRequest).await(1, TimeUnit.MINUTES);*/
-            long count = 0;
+            DataReadResult dr = Fitness.HistoryApi.readData(mClient, drr).await(5, TimeUnit.SECONDS);
 
-            /*if (dataReadResult.getBuckets().size() > 0) {
-                Log.e("History", "Number of buckets: " + dataReadResult.getBuckets().size());
-                for (Bucket bucket : dataReadResult.getBuckets()) {
-                    List<DataSet> dataSets = bucket.getDataSets();
-                    for (DataSet dataSet : dataSets) {
-                        if (dataSet.getDataType().equals(DataType.AGGREGATE_SPEED_SUMMARY)) {
-                            if (!dataSet.isEmpty()) {
-                                count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_SPEED).asInt();
+            double speed;
+
+            if (dr.getBuckets().size() > 0) {
+                Log.e("TEMP", "!");
+                for (Bucket bucket : dr.getBuckets()) {
+                    Log.e("TEMP", "@");
+                    List<DataSet> ds = bucket.getDataSets();
+                    for (DataSet set : ds) {
+                        Log.e("TEMP", "#");
+                        if (set.getDataType().equals(DataType.AGGREGATE_SPEED_SUMMARY)) {
+                            List<DataPoint> l = set.getDataPoints();
+                            for (DataPoint dp : l) {
+                                Log.e("TEMP", dp.getValue(Field.FIELD_SPEED) + "");
                             }
-                            //count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
-                            Log.e("TEMP", dataSet.toString());
                         }
                     }
                 }
-            }*/
-
-            float s = new Speed().execute().get();
-            if (s >= 2 && s < 10) {
-                updateText1(String.format("%.0f m", d.get(0)[0]) + " / " + String.format("%.0f s", d.get(0)[1]) + " (Expected: " + String.format("%.0f s", d.get(0)[0] / s) + ")");
-            } else {
-                updateText1(String.format("%.0f m", d.get(0)[0]) + " / " + String.format("%.0f s", d.get(0)[1]) + " (Expected: " + String.format("%.0f s", d.get(0)[0] / 1.25) + ")");
             }
+            Log.e("TEMP", "!!");
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }//FIXME: 제거
+            updateText3(f + "");
+            return 0f;
+        }
     }
 
     /**
@@ -610,6 +607,7 @@ public class MainActivity extends AppCompatActivity
         System.out.println(a);
     }
     */
+    /*
     public ArrayList<Double[]> pedestrianPath(String sx, String sy, String ex, String ey, String startName, String endName) throws UnsupportedEncodingException {
         final String coordinate = "WGS84GEO";
         final String option = "0";
@@ -651,7 +649,7 @@ public class MainActivity extends AppCompatActivity
             return null;
         }
     }
-
+*/
     /**
      * @param positions 위도와 경도를 나타내는 클래스 LatLng로 이루어진 ArrayList. 그러니까 그릴 좌표
      * @return 그렸다면 polyline 객체, 좌표가 1개 이하이면 그리지 못하고 null 반환.

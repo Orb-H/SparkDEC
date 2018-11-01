@@ -32,9 +32,9 @@
                     android:layout_height="match_parent"
                     android:layout_weight="0.8"
                     android:inputType="textPersonName"
+                    android:hint="시작 지점"
                     android:textColor="#000"
-                    android:textColorHint="#888"
-                    android:hint="시작 지점" />
+                    android:textColorHint="#888" />
 
                 <Button
                     android:id="@+id/startPosBtn"
@@ -56,9 +56,9 @@
                     android:layout_height="match_parent"
                     android:layout_weight="0.8"
                     android:inputType="textPersonName"
+                    android:hint="도착 지점"
                     android:textColor="#000"
-                    android:textColorHint="#888"
-                    android:hint="도착 지점" />
+                    android:textColorHint="#888" />
 
                 <Button
                     android:id="@+id/destPosBtn"
@@ -171,10 +171,10 @@
         </LinearLayout>
 
         <LinearLayout
-            android:visibility="gone"
+            android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="vertical">
+            android:visibility="gone">
 
             <Space
                 android:layout_width="match_parent"
@@ -194,10 +194,10 @@
         </LinearLayout>
 
         <LinearLayout
-            android:visibility="gone"
+            android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="vertical">
+            android:visibility="gone">
 
             <Space
                 android:layout_width="match_parent"
