@@ -49,7 +49,7 @@ public class ActivityIntentService extends IntentService {
             String s = PreferenceManager.getDefaultSharedPreferences(this).getString(MainActivity.DETECTED_ACTIVITY, "0,0,0,0");
             String[] sp = s.split(",");
 
-            tempTime = PreferenceManager.getDefaultSharedPreferences(this).getLong(MainActivity.STANDARD_TIME, 0);
+            tempTime = PreferenceManager.getDefaultSharedPreferences(this).getLong(MainActivity.STANDARD_TIME, System.currentTimeMillis());
             long l, temp = System.currentTimeMillis();
 
             for (DetectedActivity da : detectedActivities) {
