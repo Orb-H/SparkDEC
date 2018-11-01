@@ -24,8 +24,9 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
     public static final int TRANSIT_MODE_WALK = 1;
     public static final int TRANSIT_MODE_BICYCLE = 2;
     public static final int TRANSIT_MODE_TRANSIT = 3;
-    public int duration = 0;
-    public int distance = 0;
+    public ArrayList<Integer> duration;
+    public ArrayList<Integer> distance;
+    public ArrayList<String> transits;
 
     private final String TRANSIT_PARSE[] = {"driving", "walking", "bicycling", "transit"};
 
@@ -56,12 +57,13 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
         urlBuilder.append(TRANSIT_PARSE[mode]);
     }
 
-    public void clear() {
-        urlBuilder = new StringBuilder("https://maps.googleapis.com/maps/api/directions/json?origin=");
-        duration = 0;
-        distance = 0;
-    }
-
+    /*
+        public void clear() {
+            urlBuilder = new StringBuilder("https://maps.googleapis.com/maps/api/directions/json?origin=");
+            duration = 0;
+            distance = 0;
+        }
+    */
     public void addAttributes(String key, String value) {
         urlBuilder.append("&");
         urlBuilder.append(key);
@@ -76,11 +78,11 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
         urlBuilder.replace(start + key.length() + 1, end - 1, value);
     }
 
-    public int getDistance() {
+    public ArrayList<Integer> getDistance() {
         return distance;
     }
 
-    public int getDuration() {
+    public ArrayList<Integer> getDuration() {
         return duration;
     }
 
@@ -88,8 +90,8 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
     protected void onPreExecute() {
         super.onPreExecute();
         returnBuilder = new StringBuilder();
-        duration = 0;
-        distance = 0;
+        duration = new ArrayList<>();
+        distance = new ArrayList<>();
     }
 
     protected ArrayList<LatLng> doInBackground(String... strings) {
@@ -128,12 +130,13 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
             JSONArray legs = routes.getJSONArray("legs");
             for (int i = 0; i < legs.length(); i++) {
                 JSONArray steps = legs.getJSONObject(i).getJSONArray("steps");
-                distance += legs.getJSONObject(i).getJSONObject("distance").getInt("value");
-                duration += legs.getJSONObject(i).getJSONObject("duration").getInt("value");
                 for (int j = 0; j < steps.length(); j++) {
                     JSONObject temp = steps.getJSONObject(j);
+                    distance.add(temp.getJSONObject("distance").getInt("value"));
+                    duration.add(temp.getJSONObject("duration").getInt("value"));
                     returns.add(new LatLng(temp.getJSONObject("start_location").getDouble("lat"), temp.getJSONObject("start_location").getDouble("lng")));
                     returns.add(new LatLng(temp.getJSONObject("end_location").getDouble("lat"), temp.getJSONObject("end_location").getDouble("lng")));
+                    transits.add(temp.getString("travel_mode"));
                 }
             }
         } catch (JSONException e) {

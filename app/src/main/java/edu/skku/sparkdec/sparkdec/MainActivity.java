@@ -48,7 +48,6 @@ import com.google.android.gms.fitness.data.DataType;
 import com.google.android.gms.fitness.data.Field;
 import com.google.android.gms.fitness.request.DataReadRequest;
 import com.google.android.gms.fitness.result.DataReadResult;
-import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.ActivityRecognitionClient;
 import com.google.android.gms.location.places.GeoDataClient;
 import com.google.android.gms.location.places.PlaceDetectionClient;
@@ -65,16 +64,10 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -487,10 +480,12 @@ public class MainActivity extends AppCompatActivity
         cal.add(Calendar.YEAR, -1);
         long startTime = cal.getTimeInMillis();*/
 
-        ArrayList<Double[]> d = null;
+        ArrayList<LatLng> d;
         try {
             Log.e("TEMP","Route find Request");
-            d = pedestrianPath("126.9700634", "37.3001989", "126.9732337", "37.2939288", "성균관대역", "성균관대학교 반도체관");
+            PathFinder pf = new PathFinder("126.9700634", "37.3001989", "126.9732337", "37.2939288", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
+            pf.execute();
+            d = pf.get();
             Log.e("TEMP","Route Found");
 
             /*DataReadRequest readRequest = new DataReadRequest.Builder()
@@ -517,12 +512,14 @@ public class MainActivity extends AppCompatActivity
                     }
                 }
             }*/
-            updateText1(String.format("%.0f m", d.get(0)[1]) + " / (" + String.format("%.1f s", d.get(0)[1] / count) + " expected)");
+            updateText1(String.format("%.0f m", pf.distance) + " / (" + String.format("%.1f s", pf.duration / count) + " expected)");
 
             //new Speed().execute();
-        } catch (UnsupportedEncodingException e) {
+        } catch (InterruptedException e) {
             e.printStackTrace();
-        }//FIXME: 제거
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -589,20 +586,7 @@ public class MainActivity extends AppCompatActivity
         drawer.closeDrawer(GravityCompat.START);
         return true;
     }
-
-    /*
-    public void test(View v) throws UnsupportedEncodingException {
-        if (android.os.Debug.isDebuggerConnected())
-            android.os.Debug.waitForDebugger();
-        ArrayList<Double[]> result = pedestrianPath("1", "1", "1", "1", "출발지", "도착지");
-        String a = Double.toString(result.get(0)[0]) + " " + Double.toString(result.get(0)[1]) + "\n";
-        for (int i = 1; i < result.size(); i++) {
-            a += Double.toString(result.get(i)[0]) + " " + Double.toString(result.get(i)[1]) + "\n";
-        }
-        Toast.makeText(this, a, Toast.LENGTH_LONG);
-        System.out.println(a);
-    }
-    */
+/*
     public ArrayList<Double[]> pedestrianPath(String sx, String sy, String ex, String ey, String startName, String endName) throws UnsupportedEncodingException {
         final String coordinate = "WGS84GEO";
         final String option = "0";
@@ -643,7 +627,7 @@ public class MainActivity extends AppCompatActivity
             return null;
         }
     }
-
+*/
     /**
      * @param positions 위도와 경도를 나타내는 클래스 LatLng로 이루어진 ArrayList. 그러니까 그릴 좌표
      * @return 그렸다면 polyline 객체, 좌표가 1개 이하이면 그리지 못하고 null 반환.
