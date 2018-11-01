@@ -414,7 +414,7 @@ public class MainActivity extends AppCompatActivity
             }*/
 
 
-            //new Speed().execute();
+            new Speed().execute();
 
             float s = new Speed().execute().get();
             if (s >= 2 && s < 10) {
@@ -451,6 +451,7 @@ public class MainActivity extends AppCompatActivity
      * 전체 Request 체크
      */
     private void requestPerm() {
+        requestPerm(Manifest.permission.ACCESS_FINE_LOCATION, 101);
         String[] request = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET, "com.google.android.gms.permission.ACTIVITY_RECOGNITION", Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
         for (int i = 0; i < 4; i++) {
@@ -476,7 +477,17 @@ public class MainActivity extends AppCompatActivity
      * Request 요청 답
      */
     public void onRequestPermissionsResult(int requestCode, String permission[], int[] grantResults) {
-
+        switch (requestCode) {
+            case 101:
+                requestPerm(Manifest.permission.INTERNET, 102);
+                break;
+            case 102:
+                requestPerm("com.google.android.gms.permission.ACTIVITY_RECOGNITION", 103);
+                break;
+            case 103:
+                requestPerm(Manifest.permission.WRITE_EXTERNAL_STORAGE, 104);
+                break;
+        }
     }
 
     private class Speed extends AsyncTask<Void, Void, Float> {
@@ -515,8 +526,6 @@ public class MainActivity extends AppCompatActivity
                 }
             }
             Log.e("TEMP", "!!");
-
-            updateText3(f + "");
             return 0f;
         }
     }
@@ -586,62 +595,6 @@ public class MainActivity extends AppCompatActivity
         return true;
     }
 
-    /*
-    public void test(View v) throws UnsupportedEncodingException {
-        if (android.os.Debug.isDebuggerConnected())
-            android.os.Debug.waitForDebugger();
-        ArrayList<Double[]> result = pedestrianPath("1", "1", "1", "1", "출발지", "도착지");
-        String a = Double.toString(result.get(0)[0]) + " " + Double.toString(result.get(0)[1]) + "\n";
-        for (int i = 1; i < result.size(); i++) {
-            a += Double.toString(result.get(i)[0]) + " " + Double.toString(result.get(i)[1]) + "\n";
-        }
-        Toast.makeText(this, a, Toast.LENGTH_LONG);
-        System.out.println(a);
-    }
-    */
-    /*
-    public ArrayList<Double[]> pedestrianPath(String sx, String sy, String ex, String ey, String startName, String endName) throws UnsupportedEncodingException {
-        final String coordinate = "WGS84GEO";
-        final String option = "0";
-        Long epochTime = System.currentTimeMillis() / 1000;
-        epochTime -= 31556926 * 33;
-        final String gpsTime = epochTime.toString();
-        final String requestValue = "startX=" + sx + "&startY=" + sy + "&endX=" + ex + "&endY=" + ey + "&reqCoordType=" + coordinate +
-                "&startName=" + URLEncoder.encode("출발지", "UTF-8") + "&endName=" + URLEncoder.encode("도착지", "UTF-8") + "&searchOption=" + option + "&resCoordType=" + coordinate;
-
-//        final String requestValue = "startX=" + sx + "&startY=" + sy + "&endX=" + ex + "&endY=" + ey + "&reqCoordType=" + coordinate +
-//                "&startName=" + URLEncoder.encode(startName, "UTF-8") + "&endName=" + URLEncoder.encode(endName, "UTF-8") + "&searchOption=" + option + "&resCoordType=" + coordinate;
-
-        System.out.println(requestValue);
-        try {
-            String returnString = new TmapPedestrian().execute(requestValue).get();
-            Log.e("TEMP", returnString);
-            ArrayList<Double[]> returnValue = new ArrayList<>();
-            JSONObject jParser = new JSONObject(returnString);
-            JSONArray jArray = jParser.getJSONArray("features");
-            boolean flag = true;
-            for (int i = 0; i < jArray.length(); i++) {
-                JSONObject obj = jArray.getJSONObject(i);
-
-                if (obj.getJSONObject("geometry").getString("type").equals("Point")) {
-                    JSONArray innerArray = obj.getJSONObject("geometry").getJSONArray("coordinates");
-                    if (flag && obj.getJSONObject("properties").getString("pointType").equals("SP")) {
-                        flag = false;
-                        Double[] doubleArray = {obj.getJSONObject("properties").getDouble("totalDistance"), obj.getJSONObject("properties").getDouble("totalTime")};
-                        returnValue.add(doubleArray);
-                    }
-                    Double[] doubleArray = {innerArray.getDouble(0), innerArray.getDouble(1)};
-                    returnValue.add(doubleArray);
-
-                }
-            }
-            return returnValue;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-*/
     /**
      * @param positions 위도와 경도를 나타내는 클래스 LatLng로 이루어진 ArrayList. 그러니까 그릴 좌표
      * @return 그렸다면 polyline 객체, 좌표가 1개 이하이면 그리지 못하고 null 반환.
@@ -699,7 +652,7 @@ public class MainActivity extends AppCompatActivity
         } catch (Exception e) {
             sb = "S: 0ms\nW: 0ms\nR: 0ms\nOther: 0ms";
         }
-        //updateText3(sb);
+        updateText3(sb);
     }
 
     /**
@@ -710,7 +663,6 @@ public class MainActivity extends AppCompatActivity
     private PendingIntent getActivityDetectionPendingIntent() {
         Intent intent = new Intent(this, ActivityIntentService.class);
         return PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-
     }
 
     /**
