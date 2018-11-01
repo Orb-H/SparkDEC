@@ -522,9 +522,9 @@ public class MainActivity extends AppCompatActivity
 
             float s = new Speed().execute().get();
             if (s >= 2 && s < 10) {
-                updateText1(String.format("%.0f m", d.get(0)[0]) + " / " + String.format("%.0f s", d.get(0)[1]) + " (Expected: " + String.format("%.1f s", d.get(0)[0] / s) + ")");
+                updateText1(String.format("%.0f m", d.get(0)[0]) + " / " + String.format("%.0f s", d.get(0)[1]) + " (Expected: " + String.format("%.0f s", d.get(0)[0] / s) + ")");
             } else {
-                updateText1(String.format("%.0f m", d.get(0)[0]) + " / " + String.format("%.0f s", d.get(0)[1]) + " (Expected: " + String.format("%.1f s", d.get(0)[0] / 1.25) + ")");
+                updateText1(String.format("%.0f m", d.get(0)[0]) + " / " + String.format("%.0f s", d.get(0)[1]) + " (Expected: " + String.format("%.0f s", d.get(0)[0] / 1.25) + ")");
             }
 
         } catch (Exception e) {

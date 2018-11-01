@@ -33,6 +33,7 @@
                     android:layout_weight="0.8"
                     android:inputType="textPersonName"
                     android:textColor="#000"
+                    android:textColorHint="#888"
                     android:hint="시작 지점" />
 
                 <Button
@@ -56,6 +57,7 @@
                     android:layout_weight="0.8"
                     android:inputType="textPersonName"
                     android:textColor="#000"
+                    android:textColorHint="#888"
                     android:hint="도착 지점" />
 
                 <Button
