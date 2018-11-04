@@ -68,6 +68,7 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
+import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -231,7 +232,7 @@ public class MainActivity extends AppCompatActivity
     public void subscribe() {
         // To create a subscription, invoke the Recording API. As soon as the subscription is
         // active, fitness data will start recording.
-        Fitness.RecordingApi.subscribe(mClient, DataType.TYPE_STEP_COUNT_CUMULATIVE)
+        Fitness.RecordingApi.subscribe(mClient, DataType.TYPE_STEP_COUNT_DELTA)
                 .setResultCallback(new ResultCallback<Status>() {
                     @Override
                     public void onResult(Status status) {
@@ -246,7 +247,7 @@ public class MainActivity extends AppCompatActivity
                         }
                     }
                 });
-        Fitness.RecordingApi.subscribe(mClient, DataType.TYPE_DISTANCE_CUMULATIVE)
+        Fitness.RecordingApi.subscribe(mClient, DataType.TYPE_DISTANCE_DELTA)
                 .setResultCallback(new ResultCallback<Status>() {
                     @Override
                     public void onResult(@NonNull Status status) {
@@ -408,6 +409,7 @@ public class MainActivity extends AppCompatActivity
             mClient = new GoogleApiClient.Builder(this)
                     .addApi(Fitness.HISTORY_API)
                     .addApi(Fitness.RECORDING_API)
+                    .addScope(new Scope(Scopes.FITNESS_LOCATION_READ))
                     .addScope(new Scope(Scopes.FITNESS_ACTIVITY_READ))
                     .addConnectionCallbacks(this)
                     .enableAutoManage(this, 0, this)
@@ -443,6 +445,7 @@ public class MainActivity extends AppCompatActivity
     public void onRequestPermissionsResult(int requestCode, String permission[], int[] grantResults) {
         switch (requestCode) {
             case 101:
+                initializeMap(googleMap);
                 requestPerm(Manifest.permission.INTERNET, 102);
                 break;
             case 102:
@@ -455,6 +458,7 @@ public class MainActivity extends AppCompatActivity
                 mClient = new GoogleApiClient.Builder(this)
                         .addApi(Fitness.HISTORY_API)
                         .addApi(Fitness.RECORDING_API)
+                        .addScope(new Scope(Scopes.FITNESS_LOCATION_READ))
                         .addScope(new Scope(Scopes.FITNESS_ACTIVITY_READ))
                         .addConnectionCallbacks(this)
                         .enableAutoManage(this, 0, this)
@@ -488,10 +492,8 @@ public class MainActivity extends AppCompatActivity
     private class Speed extends AsyncTask<Void, Void, Float> {
         public Float doInBackground(Void... params) {
             Calendar c = Calendar.getInstance();
-            Log.e("TEMP", c.toString());
             long l1 = c.getTimeInMillis();
             c.add(Calendar.DATE, -7);
-            Log.e("TEMP", c.toString());
             long l2 = c.getTimeInMillis();
             DataReadRequest drr = new DataReadRequest.Builder()
                     .read(DataType.AGGREGATE_SPEED_SUMMARY)
@@ -508,6 +510,7 @@ public class MainActivity extends AppCompatActivity
                     List<DataSet> ds = bucket.getDataSets();
                     for (DataSet set : ds) {
                         Log.e("TEMP", "Type: " + set.getDataType());
+                        showDataSet(set);
                         if (set.getDataType().equals(DataType.AGGREGATE_SPEED_SUMMARY)) {
                             List<DataPoint> l = set.getDataPoints();
                             try {
@@ -519,8 +522,29 @@ public class MainActivity extends AppCompatActivity
                         }
                     }
                 }
+            } else if (dr.getDataSets().size() > 0) {
+                for (DataSet set : dr.getDataSets()) {
+                    showDataSet(set);
+                }
             }
             return speed;
+        }
+    }
+
+    private void showDataSet(DataSet dataSet) {
+        Log.e("History", "Data returned for Data type: " + dataSet.getDataType().getName());
+        DateFormat dateFormat = DateFormat.getDateInstance();
+        DateFormat timeFormat = DateFormat.getTimeInstance();
+
+        for (DataPoint dp : dataSet.getDataPoints()) {
+            Log.e("History", "Data point:");
+            Log.e("History", "\tType: " + dp.getDataType().getName());
+            Log.e("History", "\tStart: " + dateFormat.format(dp.getStartTime(TimeUnit.MILLISECONDS)) + " " + timeFormat.format(dp.getStartTime(TimeUnit.MILLISECONDS)));
+            Log.e("History", "\tEnd: " + dateFormat.format(dp.getEndTime(TimeUnit.MILLISECONDS)) + " " + timeFormat.format(dp.getStartTime(TimeUnit.MILLISECONDS)));
+            for (Field field : dp.getDataType().getFields()) {
+                Log.e("History", "\tField: " + field.getName() +
+                        " Value: " + dp.getValue(field));
+            }
         }
     }
 
@@ -628,7 +652,6 @@ public class MainActivity extends AppCompatActivity
         super.onResume();
         PreferenceManager.getDefaultSharedPreferences(this)
                 .registerOnSharedPreferenceChangeListener(this);
-        updateDetectedActivitiesList();
     }
 
     /**
