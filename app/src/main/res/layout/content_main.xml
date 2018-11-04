@@ -10,219 +10,131 @@
     android:orientation="vertical"
     tools:showIn="@layout/app_bar_main">
 
-    <FrameLayout
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="0dp"
+        android:layout_weight="0.08"
+        android:orientation="horizontal">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+
+        <TextView
+            android:id="@+id/startPosText"
+            android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:orientation="vertical">
+            android:layout_weight="0.5"
+            android:hint="시작 지점"
+            android:inputType="textPersonName"
+            android:textColor="#000"
+            android:textColorHint="#888" />
 
+        <TextView
+            android:id="@+id/destPosText"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.5"
+            android:hint="도착 지점"
+            android:inputType="textPersonName"
+            android:textColor="#000"
+            android:textColorHint="#888" />
+    </LinearLayout>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="0.1"
-                android:orientation="horizontal">
+    <fragment
+        android:id="@+id/map"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="0.6"
+        tools:context="com.example.mapwithmarker.MapsMarkerActivity" />
 
-                <EditText
-                    android:id="@+id/startPosText"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="0.8"
-                    android:inputType="textPersonName"
-                    android:hint="시작 지점"
-                    android:textColor="#000"
-                    android:textColorHint="#888" />
+    <TableLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="0.24"
+        android:gravity="bottom">
 
-                <Button
-                    android:id="@+id/startPosBtn"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="0.2"
-                    android:text="검색" />
-            </LinearLayout>
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="0.33">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="0.1"
-                android:orientation="horizontal">
-
-                <EditText
-                    android:id="@+id/destPosText"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="0.8"
-                    android:inputType="textPersonName"
-                    android:hint="도착 지점"
-                    android:textColor="#000"
-                    android:textColorHint="#888" />
-
-                <Button
-                    android:id="@+id/destPosBtn"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="0.2"
-                    android:text="검색" />
-            </LinearLayout>
-
-            <fragment
-                android:id="@+id/map"
-                android:name="com.google.android.gms.maps.SupportMapFragment"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
+            <TextView
+                android:id="@+id/textView9"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
                 android:layout_weight="0.5"
-                tools:context="com.example.mapwithmarker.MapsMarkerActivity" />
+                android:background="#4941b1"
+                android:gravity="center"
+                android:text="예상 소비시간 :"
+                android:textColor="#fff"
+                android:textSize="20dp" />
 
-            <TableLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="0.3"
-                android:gravity="bottom">
+            <TextView
+                android:id="@+id/textView10"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="0.5"
+                android:background="#fff"
+                android:gravity="center"
+                android:text="TextView"
+                android:textColor="#000"
+                android:textSize="20dp" />
+        </TableRow>
 
-                <TableRow
-                    android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_weight="0.33">
-
-                    <TextView
-                        android:id="@+id/textView9"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="0.5"
-                        android:background="#6188d2"
-                        android:gravity="center"
-                        android:text="예상 소비시간 :"
-                        android:textColor="#000"
-                        android:textSize="20dp" />
-
-                    <TextView
-                        android:id="@+id/textView10"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="0.5"
-                        android:background="#fff"
-                        android:gravity="center"
-                        android:text="TextView"
-                        android:textColor="#000"
-                        android:textSize="20dp" />
-                </TableRow>
-
-                <TableRow
-                    android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_weight="0.33">
-
-                    <TextView
-                        android:id="@+id/textView11"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="0.5"
-                        android:background="#6188d2"
-                        android:gravity="center"
-                        android:text="목표 소비시간 :"
-                        android:textColor="#000"
-                        android:textSize="20dp" />
-
-                    <TextView
-                        android:id="@+id/textView12"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="0.5"
-                        android:background="#fff"
-                        android:gravity="center"
-                        android:text="TextView"
-                        android:textColor="#000"
-                        android:textSize="20dp" />
-                </TableRow>
-
-                <TableRow
-                    android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_weight="0.34">
-
-                    <TextView
-                        android:id="@+id/textView14"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="0.5"
-                        android:background="#6188d2"
-                        android:gravity="center"
-                        android:text="            총 거리 :"
-                        android:textColor="#000"
-                        android:textSize="20dp" />
-
-                    <TextView
-                        android:id="@+id/textView13"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="0.5"
-                        android:background="#fff"
-                        android:gravity="center"
-                        android:text="TextView"
-                        android:textColor="#000"
-                        android:textSize="20dp" />
-                </TableRow>
-
-            </TableLayout>
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/startListLayout"
-            android:orientation="vertical"
+        <TableRow
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone">
+            android:layout_height="0dp"
+            android:layout_weight="0.33">
 
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="0.1" />
+            <TextView
+                android:id="@+id/textView11"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="0.5"
+                android:background="#4941b1"
+                android:gravity="center"
+                android:text="목표 소비시간 :"
+                android:textColor="#fff"
+                android:textSize="20dp" />
 
-            <ListView
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="0.6"
-                android:background="#FFFFFF" />
+            <TextView
+                android:id="@+id/textView12"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="0.5"
+                android:background="#fff"
+                android:gravity="center"
+                android:text="TextView"
+                android:textColor="#000"
+                android:textSize="20dp" />
+        </TableRow>
 
-            <Button
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="0.3"
-                android:background="#00ff0000"
-                android:onClick="hideLayoutBtn" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/destListLayout"
-            android:orientation="vertical"
+        <TableRow
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone">
+            android:layout_height="0dp"
+            android:layout_weight="0.34">
 
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="0.2" />
+            <TextView
+                android:id="@+id/textView14"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="0.5"
+                android:background="#4941b1"
+                android:gravity="center"
+                android:text="            총 거리 :"
+                android:textColor="#fff"
+                android:textSize="20dp" />
 
-            <ListView
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="0.6"
-                android:background="#FFFFFF" />
+            <TextView
+                android:id="@+id/textView13"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="0.5"
+                android:background="#fff"
+                android:gravity="center"
+                android:text="TextView"
+                android:textColor="#000"
+                android:textSize="20dp" />
+        </TableRow>
 
-            <Button
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="0.2"
-                android:background="#00ff0000"
-                android:onClick="hideLayoutBtn" />
-        </LinearLayout>
-
-    </FrameLayout>
-
-
+    </TableLayout>
 </LinearLayout>
