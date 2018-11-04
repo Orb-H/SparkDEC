@@ -108,6 +108,8 @@ public class MainActivity extends AppCompatActivity
 
     public int dur = 0;
     public int dis = 0;
+    public int walkdur = 0;
+    public int walkdis = 0;
 
     View.OnClickListener searchBtnListener = new View.OnClickListener() {
         @Override
@@ -697,11 +699,11 @@ public class MainActivity extends AppCompatActivity
 
             float s = new Speed().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR).get();
             if (s >= 0.5 && s < 4) {
-                updateText2(String.format("%d m", dis));
-                updateText1(String.format("%d s", dur) + " / " + String.format("%d s", (int) (dis / s)));
+                updateText2(String.format("%d m", walkdis));
+                updateText1(String.format("%d s", walkdur) + " / " + String.format("%d s", (int) (walkdis / s)));
             } else {
-                updateText2(String.format("%d m", dis));
-                updateText1(String.format("%d s", dur) + " / " + String.format("%d s", (int) (dis / 1.2)));
+                updateText2(String.format("%d m", walkdis));
+                updateText1(String.format("%d s", walkdur) + " / " + String.format("%d s", (int) (walkdis / 1.2)));
             }//FIXME: 배열로 고치기
 
         } catch (Exception e) {
@@ -718,6 +720,8 @@ public class MainActivity extends AppCompatActivity
         ArrayList<Integer> distance = new ArrayList<>();
         dur = 0;
         dis = 0;
+        walkdur = 0;
+        walkdis = 0;
 
         ArrayList<LatLng> retList = new ArrayList<>();
 
@@ -767,6 +771,8 @@ public class MainActivity extends AppCompatActivity
 
                 dis += pedestrian.distance;
                 dur += pedestrian.duration;
+                walkdis += pedestrian.distance;
+                walkdur += pedestrian.duration;
             } else {
                 retList.add(googleDir.get(i * 2));
                 retList.add(googleDir.get(i * 2 + 1));

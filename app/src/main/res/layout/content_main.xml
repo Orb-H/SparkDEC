@@ -64,7 +64,7 @@
                 android:layout_weight="0.5"
                 android:background="#4941b1"
                 android:gravity="center"
-                android:text="예상 소비시간 :"
+                android:text="도보 예상 시간"
                 android:textColor="#fff"
                 android:textSize="20dp" />
 
@@ -92,7 +92,7 @@
                 android:layout_weight="0.5"
                 android:background="#4941b1"
                 android:gravity="center"
-                android:text="목표 소비시간 :"
+                android:text="총 도보 거리"
                 android:textColor="#fff"
                 android:textSize="20dp" />
 
@@ -120,7 +120,7 @@
                 android:layout_weight="0.5"
                 android:background="#4941b1"
                 android:gravity="center"
-                android:text="            총 거리 :"
+                android:text="현재까지 도보 데이터"
                 android:textColor="#fff"
                 android:textSize="20dp" />
 
