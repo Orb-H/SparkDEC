@@ -79,6 +79,7 @@ public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, SharedPreferences.OnSharedPreferenceChangeListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, OnMapReadyCallback {
     public static final String DETECTED_ACTIVITY = ".DETECTED_ACTIVITY";// Preference 데이터 Key
     public static final String STANDARD_TIME = ".STANDARD_TIME";
+    private static final String[] PERMISSIONS = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET, "com.google.android.gms.permission.ACTIVITY_RECOGNITION", Manifest.permission.WRITE_EXTERNAL_STORAGE};
     private static final int REQUEST_FINE_LOCATION = 101;// FINE_LOCATION Request code
     private static final int REQUEST_INTERNET = 102;// INTERNET Request code
     private static final int REQUEST_ACTIVITY_RECOGNITION = 103;// ACTIVITY_RECOGNITION Request code
@@ -313,36 +314,6 @@ public class MainActivity extends AppCompatActivity
         mActivityRecognitionClient = new ActivityRecognitionClient(this);
 
         requestPerm();
-
-        mClient = new GoogleApiClient.Builder(this)
-                .addApi(Fitness.HISTORY_API)
-                .addApi(Fitness.RECORDING_API)
-                .addScope(new Scope(Scopes.FITNESS_ACTIVITY_READ))
-                .addConnectionCallbacks(this)
-                .enableAutoManage(this, 0, this)
-                .build();
-
-        PreferenceManager.getDefaultSharedPreferences(this).edit().putLong(MainActivity.DETECTED_ACTIVITY, 0).apply();
-
-
-        findViewById(R.id.destPosText).setOnClickListener(searchBtnListener);
-        findViewById(R.id.startPosText).setOnClickListener(searchBtnListener);
-        /*
-        GoogleDirection googleDirection = new GoogleDirection("37.3001989","126.9700634", "37.2939288","126.9732337", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
-        googleDirection.execute();
-        ArrayList<LatLng> latLngArrayList;
-        try{
-            latLngArrayList = googleDirection.get();
-            for(LatLng element : latLngArrayList)System.out.println(element.toString());
-            drawPolyLine(latLngArrayList);
-        }
-        catch(Exception e){
-            e.printStackTrace();
-        }
-        */
-        requestUpdatesHandler();
-
-        requestGoogleSignIn();
     }
 
     /*
@@ -418,11 +389,6 @@ public class MainActivity extends AppCompatActivity
      */
     private void requestPerm() {
         requestPerm(Manifest.permission.ACCESS_FINE_LOCATION, 101);
-        String[] request = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET, "com.google.android.gms.permission.ACTIVITY_RECOGNITION", Manifest.permission.WRITE_EXTERNAL_STORAGE};
-
-        for (int i = 0; i < 4; i++) {
-            requestPerm(request[i], i + 101);
-        }
     }
 
     /**
@@ -436,6 +402,38 @@ public class MainActivity extends AppCompatActivity
             } else {
                 ActivityCompat.requestPermissions(this, new String[]{request}, requestId);
             }
+        } else if (requestId != 104) {
+            requestPerm(PERMISSIONS[requestId - 100], requestId + 1);
+        } else {
+            mClient = new GoogleApiClient.Builder(this)
+                    .addApi(Fitness.HISTORY_API)
+                    .addApi(Fitness.RECORDING_API)
+                    .addScope(new Scope(Scopes.FITNESS_ACTIVITY_READ))
+                    .addConnectionCallbacks(this)
+                    .enableAutoManage(this, 0, this)
+                    .build();
+
+            PreferenceManager.getDefaultSharedPreferences(this).edit().putLong(MainActivity.DETECTED_ACTIVITY, 0).apply();
+
+
+            findViewById(R.id.destPosText).setOnClickListener(searchBtnListener);
+            findViewById(R.id.startPosText).setOnClickListener(searchBtnListener);
+        /*
+        GoogleDirection googleDirection = new GoogleDirection("37.3001989","126.9700634", "37.2939288","126.9732337", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
+        googleDirection.execute();
+        ArrayList<LatLng> latLngArrayList;
+        try{
+            latLngArrayList = googleDirection.get();
+            for(LatLng element : latLngArrayList)System.out.println(element.toString());
+            drawPolyLine(latLngArrayList);
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
+        */
+            requestUpdatesHandler();
+
+            requestGoogleSignIn();
         }
     }
 
@@ -453,15 +451,47 @@ public class MainActivity extends AppCompatActivity
             case 103:
                 requestPerm(Manifest.permission.WRITE_EXTERNAL_STORAGE, 104);
                 break;
+            case 104:
+                mClient = new GoogleApiClient.Builder(this)
+                        .addApi(Fitness.HISTORY_API)
+                        .addApi(Fitness.RECORDING_API)
+                        .addScope(new Scope(Scopes.FITNESS_ACTIVITY_READ))
+                        .addConnectionCallbacks(this)
+                        .enableAutoManage(this, 0, this)
+                        .build();
+
+                PreferenceManager.getDefaultSharedPreferences(this).edit().putLong(MainActivity.DETECTED_ACTIVITY, 0).apply();
+
+
+                findViewById(R.id.destPosText).setOnClickListener(searchBtnListener);
+                findViewById(R.id.startPosText).setOnClickListener(searchBtnListener);
+        /*
+        GoogleDirection googleDirection = new GoogleDirection("37.3001989","126.9700634", "37.2939288","126.9732337", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
+        googleDirection.execute();
+        ArrayList<LatLng> latLngArrayList;
+        try{
+            latLngArrayList = googleDirection.get();
+            for(LatLng element : latLngArrayList)System.out.println(element.toString());
+            drawPolyLine(latLngArrayList);
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
+        */
+                requestUpdatesHandler();
+
+                requestGoogleSignIn();
+                break;
         }
     }
 
     private class Speed extends AsyncTask<Void, Void, Float> {
         public Float doInBackground(Void... params) {
-            float f = 0f;
             Calendar c = Calendar.getInstance();
+            Log.e("TEMP", c.toString());
             long l1 = c.getTimeInMillis();
             c.add(Calendar.DATE, -7);
+            Log.e("TEMP", c.toString());
             long l2 = c.getTimeInMillis();
             DataReadRequest drr = new DataReadRequest.Builder()
                     .read(DataType.AGGREGATE_SPEED_SUMMARY)
@@ -471,22 +501,26 @@ public class MainActivity extends AppCompatActivity
 
             DataReadResult dr = Fitness.HistoryApi.readData(mClient, drr).await(5, TimeUnit.SECONDS);
 
-            double speed;
+            float speed = 0f;
 
             if (dr.getBuckets().size() > 0) {
                 for (Bucket bucket : dr.getBuckets()) {
                     List<DataSet> ds = bucket.getDataSets();
                     for (DataSet set : ds) {
+                        Log.e("TEMP", "Type: " + set.getDataType());
                         if (set.getDataType().equals(DataType.AGGREGATE_SPEED_SUMMARY)) {
                             List<DataPoint> l = set.getDataPoints();
-                            for (DataPoint dp : l) {
-                                Log.e("TEMP", dp.getValue(Field.FIELD_SPEED) + "");
+                            try {
+                                speed = l.get(0).getValue(Field.FIELD_SPEED).asFloat();
+                                Log.e("TEMP", "Speed: " + speed);
+                            } catch (Exception e) {
+                                Log.e("TEMP", e.getMessage());
                             }
                         }
                     }
                 }
             }
-            return 0f;
+            return speed;
         }
     }
 
@@ -563,6 +597,7 @@ public class MainActivity extends AppCompatActivity
     public Polyline drawPolyLine(ArrayList<LatLng> positions) {
         if (positions.size() < 2) return null;
         googleMap.clear();
+        initializeMap(googleMap);
         Polyline polyline = googleMap.addPolyline(new PolylineOptions().addAll(positions));
         return polyline;
     }
