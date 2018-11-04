@@ -9,6 +9,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -20,11 +21,9 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -72,6 +71,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity
@@ -101,12 +101,32 @@ public class MainActivity extends AppCompatActivity
     protected GeoDataClient geoDataClient;
     protected PlaceDetectionClient placeDetectionClient;
     private Activity mainActivity;
-    Button.OnFocusChangeListener searchBtnListener = new View.OnFocusChangeListener() {
+    private LatLng sLatLng = null;
+    private LatLng dLatLng = null;
+    private int lastCalled = 0;
+
+    View.OnClickListener searchBtnListener = new View.OnClickListener() {
         @Override
-        public void onFocusChange(View v, boolean hasFocus) {
-            if (hasFocus) {
-                try {
+        public void onClick(View v) {
+
+            int callId = v.getId();
+
+            if (sLatLng != null && dLatLng != null && lastCalled == callId) {
+                ArrayList<LatLng> pathData = findSpecPath(
+                        Double.toString(sLatLng.latitude),
+                        Double.toString(sLatLng.longitude),
+                        Double.toString(dLatLng.latitude),
+                        Double.toString(dLatLng.longitude),
+                        GoogleDirection.TRANSIT_MODE_TRANSIT,
+                        getResources().getString(R.string.google_maps_key));
+
+                drawPathToMap(pathData);
+                return;
+            }
+
+            try {
                     Intent intent = new PlaceAutocomplete.IntentBuilder(PlaceAutocomplete.MODE_OVERLAY).build(mainActivity);
+                lastCalled = callId;
                     startActivityForResult(intent, PLACE_AUTOCOMPLETE_REQUEST_CODE);
 
                 } catch (GooglePlayServicesRepairableException e) {
@@ -115,8 +135,6 @@ public class MainActivity extends AppCompatActivity
                     e.printStackTrace();
                 }
             }
-        }
-
     };
 
     /**
@@ -126,7 +144,6 @@ public class MainActivity extends AppCompatActivity
         public Void doInBackground(Long... params) {
             long endTime = params[1];
             long startTime = params[0];
-            Log.e("TEMP", startTime + " " + endTime);
 
             DataReadRequest readRequest = new DataReadRequest.Builder()
                     .aggregate(DataType.TYPE_STEP_COUNT_DELTA, DataType.AGGREGATE_STEP_COUNT_DELTA)
@@ -139,7 +156,6 @@ public class MainActivity extends AppCompatActivity
             long count = 0;
 
             if (dataReadResult.getBuckets().size() > 0) {
-                Log.e("History", "Number of buckets: " + dataReadResult.getBuckets().size());
                 for (Bucket bucket : dataReadResult.getBuckets()) {
                     List<DataSet> dataSets = bucket.getDataSets();
                     for (DataSet dataSet : dataSets) {
@@ -148,7 +164,6 @@ public class MainActivity extends AppCompatActivity
                                 count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
                             }
                             //count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
-                            Log.e("TEMP", dataSet.toString());
                         }
                     }
                 }
@@ -165,7 +180,6 @@ public class MainActivity extends AppCompatActivity
             long distance = 0;
 
             if (dataReadResult.getBuckets().size() > 0) {
-                Log.e("History", "Number of buckets: " + dataReadResult.getBuckets().size());
                 for (Bucket bucket : dataReadResult.getBuckets()) {
                     List<DataSet> dataSets = bucket.getDataSets();
                     for (DataSet dataSet : dataSets) {
@@ -174,7 +188,6 @@ public class MainActivity extends AppCompatActivity
                                 distance += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
                             }
                             //count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
-                            Log.e("TEMP", dataSet.toString());
                         }
                     }
                 }
@@ -187,11 +200,11 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onMapReady(final GoogleMap map) {
-        Log.e("TEMP", "Map Ready");
         initializeMap(map);
         googleMap = map;
+
+
         /*GoogleDirection googleDirection = new GoogleDirection("37.3001989", "126.9700634", "37.2939288", "126.9732337", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
-        Log.e("TEMP","URL Ready");
         ArrayList<LatLng> latLngArrayList;
         try {
             latLngArrayList = googleDirection.execute().get();
@@ -200,7 +213,7 @@ public class MainActivity extends AppCompatActivity
         } catch (Exception e) {
             e.printStackTrace();
         }*/
-        Log.e("TEMP", "Map Initialized");
+
     }
 
     /**
@@ -216,12 +229,9 @@ public class MainActivity extends AppCompatActivity
                         if (status.isSuccess()) {
                             if (status.getStatusCode()
                                     == FitnessStatusCodes.SUCCESS_ALREADY_SUBSCRIBED) {
-                                Log.e("TEMP", "Existing subscription for activity detected.");
                             } else {
-                                Log.e("TEMP", "Successfully subscribed!");
                             }
                         } else {
-                            Log.e("TEMP", "There was a problem subscribing.");
                         }
                     }
                 });
@@ -232,12 +242,9 @@ public class MainActivity extends AppCompatActivity
                         if (status.isSuccess()) {
                             if (status.getStatusCode()
                                     == FitnessStatusCodes.SUCCESS_ALREADY_SUBSCRIBED) {
-                                Log.e("TEMP", "Existing subscription for activity detected.");
                             } else {
-                                Log.e("TEMP", "Successfully subscribed!");
                             }
                         } else {
-                            Log.e("TEMP", "There was a problem subscribing.");
                         }
                     }
                 });
@@ -248,12 +255,9 @@ public class MainActivity extends AppCompatActivity
                         if (status.isSuccess()) {
                             if (status.getStatusCode()
                                     == FitnessStatusCodes.SUCCESS_ALREADY_SUBSCRIBED) {
-                                Log.e("TEMP", "Existing subscription for activity detected.");
                             } else {
-                                Log.e("TEMP", "Successfully subscribed!");
                             }
                         } else {
-                            Log.e("TEMP", "There was a problem subscribing.");
                         }
                     }
                 });
@@ -307,8 +311,8 @@ public class MainActivity extends AppCompatActivity
         PreferenceManager.getDefaultSharedPreferences(this).edit().putString(MainActivity.DETECTED_ACTIVITY, "0,0,0,0").apply();
 
 
-        findViewById(R.id.destPosText).setOnFocusChangeListener(searchBtnListener);
-        findViewById(R.id.startPosText).setOnFocusChangeListener(searchBtnListener);
+        findViewById(R.id.destPosText).setOnClickListener(searchBtnListener);
+        findViewById(R.id.startPosText).setOnClickListener(searchBtnListener);
         /*
         GoogleDirection googleDirection = new GoogleDirection("37.3001989","126.9700634", "37.2939288","126.9732337", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
         googleDirection.execute();
@@ -337,15 +341,13 @@ public class MainActivity extends AppCompatActivity
     }
 
     public void onConnectionSuspended(int i) {
-        Log.e("HistoryAPI", "onConnectionSuspended");
     }
 
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        Log.e("HistoryAPI", "onConnectionFailed");
     }
 
     public void onConnected(@Nullable Bundle bundle) {
-        Log.e("HistoryAPI", "onConnected");
+
     }
 
     /**
@@ -378,54 +380,6 @@ public class MainActivity extends AppCompatActivity
         long endTime = cal.getTimeInMillis();
         cal.add(Calendar.YEAR, -1);
         long startTime = cal.getTimeInMillis();*/
-
-        ArrayList<LatLng> d;
-        try {
-            Log.e("TEMP", "Route find Request");
-            PathFinder pf = new PathFinder("126.9700634", "37.3001989", "126.9732337", "37.2939288", GoogleDirection.TRANSIT_MODE_TRANSIT, getResources().getString(R.string.google_maps_key));
-            pf.execute();
-            d = pf.get();
-            drawPolyLine(d);
-            Log.e("TEMP", "Route Found");
-
-            /*DataReadRequest readRequest = new DataReadRequest.Builder()
-                    .aggregate(DataType.TYPE_SPEED, DataType.AGGREGATE_SPEED_SUMMARY)
-                    .bucketByTime(10000, TimeUnit.DAYS)
-                    .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
-                    .build();
-
-            DataReadResult dataReadResult = Fitness.HistoryApi.readData(mClient, readRequest).await(1, TimeUnit.MINUTES);*/
-            long count = 0;
-
-            /*if (dataReadResult.getBuckets().size() > 0) {
-                Log.e("History", "Number of buckets: " + dataReadResult.getBuckets().size());
-                for (Bucket bucket : dataReadResult.getBuckets()) {
-                    List<DataSet> dataSets = bucket.getDataSets();
-                    for (DataSet dataSet : dataSets) {
-                        if (dataSet.getDataType().equals(DataType.AGGREGATE_SPEED_SUMMARY)) {
-                            if (!dataSet.isEmpty()) {
-                                count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_SPEED).asInt();
-                            }
-                            //count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
-                            Log.e("TEMP", dataSet.toString());
-                        }
-                    }
-                }
-            }*/
-
-
-            new Speed().execute();
-
-            float s = new Speed().execute().get();
-            if (s >= 2 && s < 10) {
-                //    updateText1(String.format("%.0f m", pf.dis) + " / " + String.format("%.0f s", pf.dur) + " (Expected: " + String.format("%.0f s", pf.dis / s) + ")");
-            } else {
-                //    updateText1(String.format("%.0f m", pf.dis) + " / " + String.format("%.0f s", pf.dur) + " (Expected: " + String.format("%.0f s", pf.dis / 1.25) + ")");
-            }//FIXME: 배열로 고치기
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }//FIXME: 제거
     }
 
     /**
@@ -497,35 +451,28 @@ public class MainActivity extends AppCompatActivity
             long l1 = c.getTimeInMillis();
             c.add(Calendar.DATE, -7);
             long l2 = c.getTimeInMillis();
-            Log.e("TEMP", "!");
             DataReadRequest drr = new DataReadRequest.Builder()
                     .read(DataType.AGGREGATE_SPEED_SUMMARY)
                     .setTimeRange(l2, l1, TimeUnit.MILLISECONDS)
                     .bucketByTime(7, TimeUnit.DAYS)
                     .build();
-            Log.e("TEMP", "?");
 
             DataReadResult dr = Fitness.HistoryApi.readData(mClient, drr).await(5, TimeUnit.SECONDS);
 
             double speed;
 
             if (dr.getBuckets().size() > 0) {
-                Log.e("TEMP", "!");
                 for (Bucket bucket : dr.getBuckets()) {
-                    Log.e("TEMP", "@");
                     List<DataSet> ds = bucket.getDataSets();
                     for (DataSet set : ds) {
-                        Log.e("TEMP", "#");
                         if (set.getDataType().equals(DataType.AGGREGATE_SPEED_SUMMARY)) {
                             List<DataPoint> l = set.getDataPoints();
                             for (DataPoint dp : l) {
-                                Log.e("TEMP", dp.getValue(Field.FIELD_SPEED) + "");
                             }
                         }
                     }
                 }
             }
-            Log.e("TEMP", "!!");
             return 0f;
         }
     }
@@ -712,6 +659,118 @@ public class MainActivity extends AppCompatActivity
         return ((TextView) findViewById(R.id.textView13)).getText().toString();
     }
 
+    // Find Path
+    private void drawPathToMap(ArrayList<LatLng> pathData) {
+        try {
+            drawPolyLine(pathData);
+            /*DataReadRequest readRequest = new DataReadRequest.Builder()
+                    .aggregate(DataType.TYPE_SPEED, DataType.AGGREGATE_SPEED_SUMMARY)
+                    .bucketByTime(10000, TimeUnit.DAYS)
+                    .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+                    .build();
+
+            DataReadResult dataReadResult = Fitness.HistoryApi.readData(mClient, readRequest).await(1, TimeUnit.MINUTES);*/
+            long count = 0;
+
+            /*if (dataReadResult.getBuckets().size() > 0) {
+                Log.e("History", "Number of buckets: " + dataReadResult.getBuckets().size());
+                for (Bucket bucket : dataReadResult.getBuckets()) {
+                    List<DataSet> dataSets = bucket.getDataSets();
+                    for (DataSet dataSet : dataSets) {
+                        if (dataSet.getDataType().equals(DataType.AGGREGATE_SPEED_SUMMARY)) {
+                            if (!dataSet.isEmpty()) {
+                                count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_SPEED).asInt();
+                            }
+                            //count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
+                            Log.e("TEMP", dataSet.toString());
+                        }
+                    }
+                }
+            }*/
+
+            float s = new Speed().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR).get();
+            if (s >= 2 && s < 10) {
+                //    updateText1(String.format("%.0f m", pf.dis) + " / " + String.format("%.0f s", pf.dur) + " (Expected: " + String.format("%.0f s", pf.dis / s) + ")");
+            } else {
+                //    updateText1(String.format("%.0f m", pf.dis) + " / " + String.format("%.0f s", pf.dur) + " (Expected: " + String.format("%.0f s", pf.dis / 1.25) + ")");
+            }//FIXME: 배열로 고치기
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private ArrayList<LatLng> findSpecPath(String sLat, String sLng, String eLat, String eLng, int mode, String key) {
+
+        GoogleDirection googleDirection = new GoogleDirection(sLat, sLng, eLat, eLng, mode, key);
+        TmapPedestrian pedestrian = null;
+
+        ArrayList<Integer> duration = new ArrayList<>();
+        ArrayList<Integer> distance = new ArrayList<>();
+        int dur = 0;
+        int dis = 0;
+
+        ArrayList<LatLng> retList = new ArrayList<>();
+
+        ArrayList<LatLng> googleDir;
+
+        try {
+            googleDir = googleDirection.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR).get();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            return null;
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+            return null;
+        }
+
+
+        for (int i = 0; i < googleDirection.transits.size(); i++) {
+            ArrayList<LatLng> ped = null;
+
+            if (googleDirection.transits.get(i).equals("WALKING")) {
+                SystemClock.sleep(300);
+                pedestrian = new TmapPedestrian(
+                        Double.toString(googleDir.get(i * 2).latitude),
+                        Double.toString(googleDir.get(i * 2).longitude),
+                        Double.toString(googleDir.get(i * 2 + 1).latitude),
+                        Double.toString(googleDir.get(i * 2 + 1).longitude),
+                        "출발지",
+                        "도착지");
+                try {
+                    ped = pedestrian.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR).get();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                    return null;
+                } catch (InterruptedException e) {
+                    return null;
+                }
+            }
+
+            if (ped != null) {
+                for (int j = 0; j < ped.size() - 1; j++) {
+                    retList.add(ped.get(j));
+                    retList.add(ped.get(j + 1));
+                }
+                //TODO : 여기를 그 그 사용자별 예상 시간을 넣으셈
+                distance.add(pedestrian.distance);
+                duration.add(pedestrian.duration);
+
+                dis += pedestrian.distance;
+                dur += pedestrian.duration;
+            } else {
+                retList.add(googleDir.get(i * 2));
+                retList.add(googleDir.get(i * 2 + 1));
+                distance.add(googleDirection.distance.get(i));
+                duration.add(googleDirection.duration.get(i));
+                dis += googleDirection.distance.get(i);
+                dur += googleDirection.duration.get(i);
+            }
+        }
+        return retList;
+    }
+
+
     /**
      * 구글 로그인 Activity에 대해서만 작동
      *
@@ -727,7 +786,6 @@ public class MainActivity extends AppCompatActivity
             // The Task returned from this call is always completed, no need to attach
             // a listener.
             if (resultCode == 0 || resultCode == -1) {
-                Log.e("TEMP", resultCode + "");
                 Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
                 mAccount = task.getResult();
                 accountVerified = true;
@@ -741,21 +799,29 @@ public class MainActivity extends AppCompatActivity
         if (requestCode == PLACE_AUTOCOMPLETE_REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
                 Place place = PlaceAutocomplete.getPlace(this, data);
-                Log.i("AutoComplete", "Place: " + place.getName());
             } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
                 Status status = PlaceAutocomplete.getStatus(this, data);
-                // TODO: Handle the error.
-                Log.i("AutoComplete", status.getStatusMessage());
-
             } else if (resultCode == RESULT_CANCELED) {
                 // The user canceled the operation.
             }
         }
+        if (requestCode == PLACE_AUTOCOMPLETE_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                Place place = PlaceAutocomplete.getPlace(this, data);
+                if (lastCalled == R.id.startPosText) {
+                    ((TextView) findViewById(R.id.startPosText)).setText(place.getName());
+                    sLatLng = place.getLatLng();
+                } else {
+                    ((TextView) findViewById(R.id.destPosText)).setText(place.getName());
+                    dLatLng = place.getLatLng();
+                }
 
+            } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
+                Status status = PlaceAutocomplete.getStatus(this, data);
+            } else if (resultCode == RESULT_CANCELED) {
+                // The user canceled the operation.
+            }
+        }
     }
-
-
-
-
 }
 

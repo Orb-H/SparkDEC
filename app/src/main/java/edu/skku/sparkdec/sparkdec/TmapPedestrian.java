@@ -22,7 +22,7 @@ import java.util.ArrayList;
 class TmapPedestrian extends AsyncTask<String, Void, ArrayList<LatLng>> {
     private String strUrl;
     private StringBuilder returnBuilder;
-
+    private String requestValue;
     public int distance = 0;
     public int duration = 0;
 
@@ -34,10 +34,16 @@ class TmapPedestrian extends AsyncTask<String, Void, ArrayList<LatLng>> {
         epochTime -= 31556926 * 33;
         final String gpsTime = epochTime.toString();
         try {
-            final String requestValue = "startX=" + sLng + "&startY=" + sLat + "&endX=" + eLng + "&endY=" + eLat + "&reqCoordType=" + coordinate +
-                    "&startName=" + URLEncoder.encode("출발지", "UTF-8") + "&endName=" + URLEncoder.encode("도착지", "UTF-8") + "&searchOption=" + option + "&resCoordType=" + coordinate;
+            requestValue =
+                    "startX=" + sLng
+                            + "&startY=" + sLat
+                            + "&endX=" + eLng
+                            + "&endY=" + eLat
+                            + "&reqCoordType=" + coordinate
+                            + "&startName=" + URLEncoder.encode(startName, "UTF-8")
+                            + "&endName=" + URLEncoder.encode(endName, "UTF-8")
+                            + "&searchOption=" + option;
         } catch (Exception e) {
-            Log.e("At Tmap Constructor", "URL Form Has an Exception");
             e.printStackTrace();
         }
 
@@ -66,14 +72,15 @@ class TmapPedestrian extends AsyncTask<String, Void, ArrayList<LatLng>> {
             conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
 
             OutputStream os = conn.getOutputStream();
-            os.write(strings[0].getBytes("UTF-8"));
+            os.write(requestValue.getBytes("UTF-8"));
             os.flush();
             os.close();
+
             if (conn.getResponseCode() != HttpURLConnection.HTTP_OK) {
                 BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "UTF-8"));
                 String line = br.readLine();
                 System.out.println(line);
-                Log.e("Tmap", Integer.toString(conn.getResponseCode()) + " : " + conn.getResponseMessage());
+
                 return null;
             }
             BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
@@ -90,7 +97,7 @@ class TmapPedestrian extends AsyncTask<String, Void, ArrayList<LatLng>> {
         }
 
         //parsing.
-        ArrayList<LatLng> returnValue = new ArrayList<>();
+        ArrayList<LatLng> returnValue = new ArrayList<LatLng>();
         try {
             JSONObject jParser = new JSONObject(returnBuilder.toString());
             JSONArray jArray = jParser.getJSONArray("features");
@@ -105,7 +112,8 @@ class TmapPedestrian extends AsyncTask<String, Void, ArrayList<LatLng>> {
                         distance = (int) obj.getJSONObject("properties").getDouble("totalDistance");
                         duration = (int) obj.getJSONObject("properties").getDouble("totalTime");
                     }
-                    LatLng latlng = new LatLng(innerArray.getDouble(0), innerArray.getDouble(1));
+
+                    LatLng latlng = new LatLng(innerArray.getDouble(1), innerArray.getDouble(0));
                     returnValue.add(latlng);
 
                 }

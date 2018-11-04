@@ -24,9 +24,9 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
     public static final int TRANSIT_MODE_WALK = 1;
     public static final int TRANSIT_MODE_BICYCLE = 2;
     public static final int TRANSIT_MODE_TRANSIT = 3;
-    public ArrayList<Integer> duration;
-    public ArrayList<Integer> distance;
-    public ArrayList<String> transits;
+    public ArrayList<Integer> duration = new ArrayList<>();
+    public ArrayList<Integer> distance = new ArrayList<>();
+    public ArrayList<String> transits = new ArrayList<>();
 
     private final String TRANSIT_PARSE[] = {"driving", "walking", "bicycling", "transit"};
 
@@ -95,17 +95,16 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
     }
 
     protected ArrayList<LatLng> doInBackground(String... strings) {
+
         if (android.os.Debug.isDebuggerConnected())
             android.os.Debug.waitForDebugger();
+
         try {
             URL url = new URL(urlBuilder.toString());
-            Log.d("url", url.toString());
             HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
             if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
-                Log.e("Http connection error", Integer.toString(connection.getResponseCode()) + " : " + connection.getResponseMessage());
                 BufferedReader br = new BufferedReader(new InputStreamReader(connection.getErrorStream(), "UTF-8"));
                 String line = br.readLine();
-                Log.e("", line);
                 return null;
             }
             BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), "UTF-8"));
@@ -116,14 +115,11 @@ public class GoogleDirection extends AsyncTask<String, Void, ArrayList<LatLng>> 
             br.close();
             connection.disconnect();
         } catch (MalformedURLException e) {
-            Log.e("URL 변환 에러", "In GoogleDirection url declaration");
             return null;
         } catch (IOException e) {
-            Log.e("IOException", "In GoogleDirection service connection");
             return null;
         }
         ArrayList<LatLng> returns = new ArrayList<>();
-        Log.d("DirectionJson", returnBuilder.toString());
         try {
             JSONObject response = new JSONObject(returnBuilder.toString());
             JSONObject routes = response.getJSONArray("routes").getJSONObject(0);
