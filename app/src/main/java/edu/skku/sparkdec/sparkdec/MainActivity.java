@@ -560,6 +560,7 @@ public class MainActivity extends AppCompatActivity
 
     public Polyline drawPolyLine(ArrayList<LatLng> positions) {
         if (positions.size() < 2) return null;
+        googleMap.clear();
         Polyline polyline = googleMap.addPolyline(new PolylineOptions().addAll(positions));
         return polyline;
     }
