@@ -34,6 +34,8 @@ public class ActivityIntentService extends IntentService {
     protected void onHandleIntent(Intent intent) {
 //Check whether the Intent contains activity recognition data//
         if (ActivityRecognitionResult.hasResult(intent)) {
+            if (PreferenceManager.getDefaultSharedPreferences(this).getLong(MainActivity.STANDARD_TIME, 0) == 0)
+                return;
 
 //If data is available, then extract the ActivityRecognitionResult from the Intent//
             ActivityRecognitionResult result = ActivityRecognitionResult.extractResult(intent);
@@ -41,8 +43,7 @@ public class ActivityIntentService extends IntentService {
 //Get an array of DetectedActivity objects//
             ArrayList<DetectedActivity> detectedActivities = (ArrayList) result.getProbableActivities();
 
-            String s = PreferenceManager.getDefaultSharedPreferences(this).getString(MainActivity.DETECTED_ACTIVITY, "0,0,0,0");
-            String[] sp = s.split(",");
+            long s = PreferenceManager.getDefaultSharedPreferences(this).getLong(MainActivity.DETECTED_ACTIVITY, 0);
 
             tempTime = PreferenceManager.getDefaultSharedPreferences(this).getLong(MainActivity.STANDARD_TIME, System.currentTimeMillis());
             long l, temp = System.currentTimeMillis();
@@ -50,25 +51,10 @@ public class ActivityIntentService extends IntentService {
             for (DetectedActivity da : detectedActivities) {
                 if (da.getConfidence() >= THRESHOLD) {
                     switch (da.getType()) {
-                        case DetectedActivity.STILL:
-                            l = Long.parseLong(sp[0]);
+                        case DetectedActivity.ON_FOOT:
+                            l = s;
                             l += temp - tempTime;
-                            sp[0] = Long.toString(l);
-                            break;
-                        case DetectedActivity.WALKING:
-                            l = Long.parseLong(sp[1]);
-                            l += temp - tempTime;
-                            sp[1] = Long.toString(l);
-                            break;
-                        case DetectedActivity.RUNNING:
-                            l = Long.parseLong(sp[2]);
-                            l += temp - tempTime;
-                            sp[2] = Long.toString(l);
-                            break;
-                        default:
-                            l = Long.parseLong(sp[3]);
-                            l += temp - tempTime;
-                            sp[3] = Long.toString(l);
+                            s = l;
                             break;
                     }
                 }
@@ -78,8 +64,8 @@ public class ActivityIntentService extends IntentService {
 
             PreferenceManager.getDefaultSharedPreferences(this)
                     .edit()
-                    .putString(MainActivity.DETECTED_ACTIVITY,
-                            sp[0] + "," + sp[1] + "," + sp[2] + "," + sp[3]).putLong(MainActivity.STANDARD_TIME, tempTime)
+                    .putLong(MainActivity.DETECTED_ACTIVITY, s)
+                    .putLong(MainActivity.STANDARD_TIME, tempTime)
                     .apply();
 
         }

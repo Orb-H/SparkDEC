@@ -21,6 +21,7 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -105,6 +106,9 @@ public class MainActivity extends AppCompatActivity
     private LatLng dLatLng = null;
     private int lastCalled = 0;
 
+    public int dur = 0;
+    public int dis = 0;
+
     View.OnClickListener searchBtnListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -121,20 +125,21 @@ public class MainActivity extends AppCompatActivity
                         getResources().getString(R.string.google_maps_key));
 
                 drawPathToMap(pathData);
+                startRecord();
                 return;
             }
 
             try {
-                    Intent intent = new PlaceAutocomplete.IntentBuilder(PlaceAutocomplete.MODE_OVERLAY).build(mainActivity);
+                Intent intent = new PlaceAutocomplete.IntentBuilder(PlaceAutocomplete.MODE_OVERLAY).build(mainActivity);
                 lastCalled = callId;
-                    startActivityForResult(intent, PLACE_AUTOCOMPLETE_REQUEST_CODE);
+                startActivityForResult(intent, PLACE_AUTOCOMPLETE_REQUEST_CODE);
 
-                } catch (GooglePlayServicesRepairableException e) {
-                    e.printStackTrace();
-                } catch (GooglePlayServicesNotAvailableException e) {
-                    e.printStackTrace();
-                }
+            } catch (GooglePlayServicesRepairableException e) {
+                e.printStackTrace();
+            } catch (GooglePlayServicesNotAvailableException e) {
+                e.printStackTrace();
             }
+        }
     };
 
     /**
@@ -193,7 +198,8 @@ public class MainActivity extends AppCompatActivity
                 }
             }
 
-            updateText2(count + " steps / " + distance + "m");
+            String s[] = getText3().split("/");
+            updateText3(count + " steps / " + distance + "m /" + s[2]);
             return null;
         }
     }
@@ -229,7 +235,9 @@ public class MainActivity extends AppCompatActivity
                         if (status.isSuccess()) {
                             if (status.getStatusCode()
                                     == FitnessStatusCodes.SUCCESS_ALREADY_SUBSCRIBED) {
+                                Log.e("TEMP", "Already subscribed: STEP");
                             } else {
+                                Log.e("TEMP", "Successfully subscribed: STEP");
                             }
                         } else {
                         }
@@ -242,7 +250,9 @@ public class MainActivity extends AppCompatActivity
                         if (status.isSuccess()) {
                             if (status.getStatusCode()
                                     == FitnessStatusCodes.SUCCESS_ALREADY_SUBSCRIBED) {
+                                Log.e("TEMP", "Already subscribed: DISTANCE");
                             } else {
+                                Log.e("TEMP", "Successfully subscribed: DISTANCE");
                             }
                         } else {
                         }
@@ -255,7 +265,9 @@ public class MainActivity extends AppCompatActivity
                         if (status.isSuccess()) {
                             if (status.getStatusCode()
                                     == FitnessStatusCodes.SUCCESS_ALREADY_SUBSCRIBED) {
+                                Log.e("TEMP", "Already subscribed: SPEED");
                             } else {
+                                Log.e("TEMP", "Successfully subscribed: SPEED");
                             }
                         } else {
                         }
@@ -308,7 +320,7 @@ public class MainActivity extends AppCompatActivity
                 .enableAutoManage(this, 0, this)
                 .build();
 
-        PreferenceManager.getDefaultSharedPreferences(this).edit().putString(MainActivity.DETECTED_ACTIVITY, "0,0,0,0").apply();
+        PreferenceManager.getDefaultSharedPreferences(this).edit().putLong(MainActivity.DETECTED_ACTIVITY, 0).apply();
 
 
         findViewById(R.id.destPosText).setOnClickListener(searchBtnListener);
@@ -363,8 +375,6 @@ public class MainActivity extends AppCompatActivity
                 .addDataType(DataType.TYPE_SPEED, FitnessOptions.ACCESS_READ)
                 .addDataType(DataType.AGGREGATE_SPEED_SUMMARY, FitnessOptions.ACCESS_READ)
                 .build();
-
-        startRecord();
 
         if (!GoogleSignIn.hasPermissions(mAccount, fitnessOptions)) {
             GoogleSignIn.requestPermissions(
@@ -468,6 +478,7 @@ public class MainActivity extends AppCompatActivity
                         if (set.getDataType().equals(DataType.AGGREGATE_SPEED_SUMMARY)) {
                             List<DataPoint> l = set.getDataPoints();
                             for (DataPoint dp : l) {
+                                Log.e("TEMP", dp.getValue(Field.FIELD_SPEED) + "");
                             }
                         }
                     }
@@ -587,19 +598,14 @@ public class MainActivity extends AppCompatActivity
      */
     protected void updateDetectedActivitiesList() {
         accessGoogleFit();
-        String s = PreferenceManager.getDefaultSharedPreferences(mContext).getString(DETECTED_ACTIVITY, "0,0,0,0");
-        String[] sp = s.split(",");
-
-        String sb = "";
+        long s = PreferenceManager.getDefaultSharedPreferences(mContext).getLong(DETECTED_ACTIVITY, 0);
+        String t[] = getText3().split("/");
+        double d = s / 1000d;
         try {
-            sb = "S: " + sp[0] + "ms\n" +        //TODO: Here Is Error. IndexOutBoundsException.
-                    "W: " + sp[1] + "ms\n" +
-                    "R: " + sp[2] + "ms\n" +
-                    "Other: " + sp[3] + "ms";
+            updateText3(t[0] + "/" + t[1] + "/ " + String.format("%.1f s", d));
         } catch (Exception e) {
-            sb = "S: 0ms\nW: 0ms\nR: 0ms\nOther: 0ms";
+            updateText3("0 steps / 0 m / 0.0 s");
         }
-        updateText3(sb);
     }
 
     /**
@@ -689,10 +695,12 @@ public class MainActivity extends AppCompatActivity
             }*/
 
             float s = new Speed().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR).get();
-            if (s >= 2 && s < 10) {
-                //    updateText1(String.format("%.0f m", pf.dis) + " / " + String.format("%.0f s", pf.dur) + " (Expected: " + String.format("%.0f s", pf.dis / s) + ")");
+            if (s >= 0.5 && s < 4) {
+                updateText2(String.format("%d m", dis));
+                updateText1(String.format("%d s", dur) + " / " + String.format("%d s", (int) (dis / s)));
             } else {
-                //    updateText1(String.format("%.0f m", pf.dis) + " / " + String.format("%.0f s", pf.dur) + " (Expected: " + String.format("%.0f s", pf.dis / 1.25) + ")");
+                updateText2(String.format("%d m", dis));
+                updateText1(String.format("%d s", dur) + " / " + String.format("%d s", (int) (dis / 1.2)));
             }//FIXME: 배열로 고치기
 
         } catch (Exception e) {
@@ -707,8 +715,8 @@ public class MainActivity extends AppCompatActivity
 
         ArrayList<Integer> duration = new ArrayList<>();
         ArrayList<Integer> distance = new ArrayList<>();
-        int dur = 0;
-        int dis = 0;
+        dur = 0;
+        dis = 0;
 
         ArrayList<LatLng> retList = new ArrayList<>();
 
