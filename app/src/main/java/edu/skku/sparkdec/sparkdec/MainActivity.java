@@ -194,16 +194,15 @@ public class MainActivity extends AppCompatActivity
                     for (DataSet dataSet : dataSets) {
                         if (dataSet.getDataType().equals(DataType.TYPE_DISTANCE_DELTA)) {
                             if (!dataSet.isEmpty()) {
-                                distance += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
+                                distance += dataSet.getDataPoints().get(0).getValue(Field.FIELD_DISTANCE).asInt();
                             }
-                            //count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
                         }
                     }
                 }
             }
 
             String s[] = getText3().split("/");
-            updateText3(count + " steps / " + distance + "m /" + s[2]);
+            updateText3(count + " steps / " + distance + " m /" + s[2]);
             return null;
         }
     }
