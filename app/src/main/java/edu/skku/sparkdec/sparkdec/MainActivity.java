@@ -80,11 +80,11 @@ public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, SharedPreferences.OnSharedPreferenceChangeListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, OnMapReadyCallback {
     public static final String DETECTED_ACTIVITY = ".DETECTED_ACTIVITY";// Preference 데이터 Key
     public static final String STANDARD_TIME = ".STANDARD_TIME";
+    private static final String STEPS_WALKED = ".STEPS_WALKED";
+    private static final String DISTANCE_WALKED = ".DISTANCE_WALKED";
+    private static final String TIME_WALKED = ".TIME_WALKED";
     private static final String[] PERMISSIONS = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET, "com.google.android.gms.permission.ACTIVITY_RECOGNITION", Manifest.permission.WRITE_EXTERNAL_STORAGE};
-    private static final int REQUEST_FINE_LOCATION = 101;// FINE_LOCATION Request code
-    private static final int REQUEST_INTERNET = 102;// INTERNET Request code
-    private static final int REQUEST_ACTIVITY_RECOGNITION = 103;// ACTIVITY_RECOGNITION Request code
-    private static final int REQUEST_WRITE_EXTERNAL_STORAGE = 104;//WRITE_EXTERNAL_STORAGE Request code
+    static boolean check = false;
     private int PLACE_AUTOCOMPLETE_REQUEST_CODE = 1;
 
     private Context mContext;// 이 Activity의 Context
@@ -151,6 +151,8 @@ public class MainActivity extends AppCompatActivity
      */
     private class StepCounter extends AsyncTask<Long, Void, Void> {
         public Void doInBackground(Long... params) {
+            if (!check)
+                return null;
             long endTime = params[1];
             long startTime = params[0];
 
@@ -186,7 +188,7 @@ public class MainActivity extends AppCompatActivity
 
             dataReadResult = Fitness.HistoryApi.readData(mClient, readRequest).await(1, TimeUnit.MINUTES);
 
-            long distance = 0;
+            float distance = 0;
 
             if (dataReadResult.getBuckets().size() > 0) {
                 for (Bucket bucket : dataReadResult.getBuckets()) {
@@ -194,15 +196,15 @@ public class MainActivity extends AppCompatActivity
                     for (DataSet dataSet : dataSets) {
                         if (dataSet.getDataType().equals(DataType.TYPE_DISTANCE_DELTA)) {
                             if (!dataSet.isEmpty()) {
-                                distance += dataSet.getDataPoints().get(0).getValue(Field.FIELD_DISTANCE).asInt();
+                                distance += dataSet.getDataPoints().get(0).getValue(Field.FIELD_DISTANCE).asFloat();
                             }
                         }
                     }
                 }
             }
 
-            String s[] = getText3().split("/");
-            updateText3(count + " steps / " + distance + " m /" + s[2]);
+            PreferenceManager.getDefaultSharedPreferences(mContext).edit().putLong(STEPS_WALKED, count).putFloat(DISTANCE_WALKED, distance).apply();
+            updateText3();
             return null;
         }
     }
@@ -644,6 +646,7 @@ public class MainActivity extends AppCompatActivity
     public void startRecord() {
         startTime = Calendar.getInstance().getTimeInMillis();
         PreferenceManager.getDefaultSharedPreferences(mContext).edit().putLong(STANDARD_TIME, startTime).apply();
+        check = true;
     }
 
     @Override
@@ -658,14 +661,12 @@ public class MainActivity extends AppCompatActivity
      */
     protected void updateDetectedActivitiesList() {
         accessGoogleFit();
+        if (!check)
+            return;
         long s = PreferenceManager.getDefaultSharedPreferences(mContext).getLong(DETECTED_ACTIVITY, 0);
-        String t[] = getText3().split("/");
-        double d = s / 1000d;
-        try {
-            updateText3(t[0] + "/" + t[1] + "/ " + String.format("%.1f s", d));
-        } catch (Exception e) {
-            updateText3("0 steps / 0 m / 0.0 s");
-        }
+        float d = s / 1000f;
+        PreferenceManager.getDefaultSharedPreferences(mContext).edit().putFloat(TIME_WALKED, d).apply();
+        updateText3();
     }
 
     /**
@@ -711,6 +712,13 @@ public class MainActivity extends AppCompatActivity
         t.setText(s);
     }
 
+    private void updateText3() {
+        ((TextView) findViewById(R.id.textView13)).setText(
+                PreferenceManager.getDefaultSharedPreferences(mContext).getLong(STEPS_WALKED, 0) + " steps / " +
+                        String.format("%.1f", PreferenceManager.getDefaultSharedPreferences(mContext).getFloat(DISTANCE_WALKED, 0.0f)) + " m / " +
+                        String.format("%.1f", PreferenceManager.getDefaultSharedPreferences(mContext).getFloat(TIME_WALKED, 0.0f)) + " s");
+    }
+
     /**
      * 세 번째 TextView 내용 삽입
      *
@@ -729,30 +737,6 @@ public class MainActivity extends AppCompatActivity
     private void drawPathToMap(ArrayList<LatLng> pathData) {
         try {
             drawPolyLine(pathData);
-            /*DataReadRequest readRequest = new DataReadRequest.Builder()
-                    .aggregate(DataType.TYPE_SPEED, DataType.AGGREGATE_SPEED_SUMMARY)
-                    .bucketByTime(10000, TimeUnit.DAYS)
-                    .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
-                    .build();
-
-            DataReadResult dataReadResult = Fitness.HistoryApi.readData(mClient, readRequest).await(1, TimeUnit.MINUTES);*/
-            long count = 0;
-
-            /*if (dataReadResult.getBuckets().size() > 0) {
-                Log.e("History", "Number of buckets: " + dataReadResult.getBuckets().size());
-                for (Bucket bucket : dataReadResult.getBuckets()) {
-                    List<DataSet> dataSets = bucket.getDataSets();
-                    for (DataSet dataSet : dataSets) {
-                        if (dataSet.getDataType().equals(DataType.AGGREGATE_SPEED_SUMMARY)) {
-                            if (!dataSet.isEmpty()) {
-                                count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_SPEED).asInt();
-                            }
-                            //count += dataSet.getDataPoints().get(0).getValue(Field.FIELD_STEPS).asInt();
-                            Log.e("TEMP", dataSet.toString());
-                        }
-                    }
-                }
-            }*/
 
             float s = new Speed().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR).get();
             if (s >= 0.5 && s < 4) {

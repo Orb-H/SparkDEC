@@ -34,7 +34,7 @@ public class ActivityIntentService extends IntentService {
     protected void onHandleIntent(Intent intent) {
 //Check whether the Intent contains activity recognition data//
         if (ActivityRecognitionResult.hasResult(intent)) {
-            if (PreferenceManager.getDefaultSharedPreferences(this).getLong(MainActivity.STANDARD_TIME, 0) == 0)
+            if (!MainActivity.check)
                 return;
 
 //If data is available, then extract the ActivityRecognitionResult from the Intent//
