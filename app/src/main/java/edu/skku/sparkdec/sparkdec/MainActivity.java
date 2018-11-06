@@ -9,7 +9,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -73,7 +72,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity
@@ -754,7 +752,17 @@ public class MainActivity extends AppCompatActivity
 
     private ArrayList<LatLng> findSpecPath(String sLat, String sLng, String eLat, String eLng, int mode, String key) {
 
-        GoogleDirection googleDirection = new GoogleDirection(sLat, sLng, eLat, eLng, mode, key);
+        TmapPedestrian tmap = new TmapPedestrian(sLat, sLng, eLat, eLng, "출발지", "도착지");
+        tmap.execute();
+        ArrayList<LatLng> retList = new ArrayList<>();
+        try {
+            retList = tmap.get();
+        } catch (Exception e) {
+
+        }
+        walkdis = tmap.distance;
+        walkdur = tmap.duration;
+        /*
         TmapPedestrian pedestrian = null;
 
         ArrayList<Integer> duration = new ArrayList<>();
@@ -823,6 +831,7 @@ public class MainActivity extends AppCompatActivity
                 dur += googleDirection.duration.get(i);
             }
         }
+        */
         return retList;
     }
 
