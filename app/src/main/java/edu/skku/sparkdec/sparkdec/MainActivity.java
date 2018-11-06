@@ -736,7 +736,7 @@ public class MainActivity extends AppCompatActivity
             else
                 str += String.format("%d s", (int) (walkdis / s));
             str += '\n';
-            str += "T맵의 제안 시간보다 ";
+            str += "T맵 보다 ";
             if (walkdur < (walkdis / s))
                 str += ((int) (walkdis / s) - walkdur) + "초 빠름";
             else
