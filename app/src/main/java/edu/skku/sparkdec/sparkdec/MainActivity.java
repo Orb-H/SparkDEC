@@ -200,9 +200,6 @@ public class MainActivity extends AppCompatActivity
                     }
                 }
             }
-
-            PreferenceManager.getDefaultSharedPreferences(mContext).edit().putLong(STEPS_WALKED, count).putFloat(DISTANCE_WALKED, distance).apply();
-            updateText3();
             return null;
         }
     }
@@ -661,10 +658,6 @@ public class MainActivity extends AppCompatActivity
         accessGoogleFit();
         if (!check)
             return;
-        long s = PreferenceManager.getDefaultSharedPreferences(mContext).getLong(DETECTED_ACTIVITY, 0);
-        float d = s / 1000f;
-        PreferenceManager.getDefaultSharedPreferences(mContext).edit().putFloat(TIME_WALKED, d).apply();
-        updateText3();
     }
 
     /**
@@ -710,13 +703,6 @@ public class MainActivity extends AppCompatActivity
         t.setText(s);
     }
 
-    private void updateText3() {
-        ((TextView) findViewById(R.id.textView13)).setText(
-                PreferenceManager.getDefaultSharedPreferences(mContext).getLong(STEPS_WALKED, 0) + " steps / " +
-                        String.format("%.1f", PreferenceManager.getDefaultSharedPreferences(mContext).getFloat(DISTANCE_WALKED, 0.0f)) + " m / " +
-                        String.format("%.1f", PreferenceManager.getDefaultSharedPreferences(mContext).getFloat(TIME_WALKED, 0.0f)) + " s");
-    }
-
     /**
      * 세 번째 TextView 내용 삽입
      *
@@ -737,17 +723,32 @@ public class MainActivity extends AppCompatActivity
             drawPolyLine(pathData);
 
             float s = new Speed().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR).get();
-            if (s >= 0.5 && s < 4) {
+            if (walkdis >= 1000)
+                updateText2(String.format("%.2f m", walkdis / 1000f));
+            else
                 updateText2(String.format("%d m", walkdis));
-                updateText1(String.format("%d s", walkdur) + " / " + String.format("%d s", (int) (walkdis / s)));
-            } else {
-                updateText2(String.format("%d m", walkdis));
-                updateText1(String.format("%d s", walkdur) + " / " + String.format("%d s", (int) (walkdis / 1.2)));
-            }//FIXME: 배열로 고치기
 
+            String str = "";
+            if (s < 0.5 || s >= 4)
+                s = 1.2f;
+            if ((int) (walkdis / s) >= 60)
+                str += String.format("%d m %d s", (int) (walkdis / s) / 60, (int) (walkdis / s) % 60);
+            else
+                str += String.format("%d s", (int) (walkdis / s));
+            str += '\n';
+            str += "T맵의 제안 시간보다 ";
+            if (walkdur < (walkdis / s))
+                str += ((int) (walkdis / s) - walkdur) + "초 빠름";
+            else
+                str += (walkdur - (int) (walkdis / s)) + "초 느림";
+
+            //updateText1(str);
+            updateText1(str);
+            updateText3(String.format("%.1f m/min", (s * 60)));
         } catch (Exception e) {
             e.printStackTrace();
         }
+
     }
 
     private ArrayList<LatLng> findSpecPath(String sLat, String sLng, String eLat, String eLng, int mode, String key) {
