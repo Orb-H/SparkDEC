@@ -645,7 +645,7 @@ public class MainActivity extends AppCompatActivity
      */
     public void startRecord() {
         startTime = Calendar.getInstance().getTimeInMillis();
-        PreferenceManager.getDefaultSharedPreferences(mContext).edit().putLong(STANDARD_TIME, startTime).apply();
+        PreferenceManager.getDefaultSharedPreferences(mContext).edit().putLong(STANDARD_TIME, startTime).putLong(TIME_WALKED, 0).apply();
         check = true;
     }
 
