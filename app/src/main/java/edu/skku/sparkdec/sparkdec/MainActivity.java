@@ -45,6 +45,7 @@ import com.google.android.gms.fitness.FitnessStatusCodes;
 import com.google.android.gms.fitness.data.Bucket;
 import com.google.android.gms.fitness.data.DataPoint;
 import com.google.android.gms.fitness.data.DataSet;
+import com.google.android.gms.fitness.data.DataSource;
 import com.google.android.gms.fitness.data.DataType;
 import com.google.android.gms.fitness.data.Field;
 import com.google.android.gms.fitness.request.DataReadRequest;
@@ -258,7 +259,7 @@ public class MainActivity extends AppCompatActivity
                         }
                     }
                 });
-        Fitness.RecordingApi.subscribe(mClient, DataType.AGGREGATE_SPEED_SUMMARY)
+        Fitness.RecordingApi.subscribe(mClient, DataType.TYPE_SPEED)
                 .setResultCallback(new ResultCallback<Status>() {
                     @Override
                     public void onResult(@NonNull Status status) {
@@ -344,6 +345,7 @@ public class MainActivity extends AppCompatActivity
                 .addDataType(DataType.AGGREGATE_DISTANCE_DELTA, FitnessOptions.ACCESS_READ)
                 .addDataType(DataType.TYPE_SPEED, FitnessOptions.ACCESS_READ)
                 .addDataType(DataType.AGGREGATE_SPEED_SUMMARY, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.TYPE_STEP_COUNT_CADENCE, FitnessOptions.ACCESS_READ)
                 .build();
 
         if (!GoogleSignIn.hasPermissions(mAccount, fitnessOptions)) {
@@ -485,19 +487,20 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    private class Speed extends AsyncTask<Void, Void, Float> {
-        public Float doInBackground(Void... params) {
+    private class WalkData extends AsyncTask<Void, Void, List<Float>> {
+        public List<Float> doInBackground(Void... params) {
+            List<Float> res = new ArrayList<>();
             Calendar c = Calendar.getInstance();
             long l1 = c.getTimeInMillis();
             c.add(Calendar.DATE, -7);
             long l2 = c.getTimeInMillis();
             DataReadRequest drr = new DataReadRequest.Builder()
-                    .read(DataType.AGGREGATE_SPEED_SUMMARY)
+                    .aggregate(DataType.TYPE_SPEED, DataType.AGGREGATE_SPEED_SUMMARY)
                     .setTimeRange(l2, l1, TimeUnit.MILLISECONDS)
                     .bucketByTime(7, TimeUnit.DAYS)
                     .build();
 
-            DataReadResult dr = Fitness.HistoryApi.readData(mClient, drr).await(5, TimeUnit.SECONDS);
+            DataReadResult dr = Fitness.HistoryApi.readData(mClient, drr).await(1, TimeUnit.MINUTES);
 
             float speed = 0f;
 
@@ -506,24 +509,85 @@ public class MainActivity extends AppCompatActivity
                     List<DataSet> ds = bucket.getDataSets();
                     for (DataSet set : ds) {
                         Log.e("TEMP", "Type: " + set.getDataType());
-                        showDataSet(set);
                         if (set.getDataType().equals(DataType.AGGREGATE_SPEED_SUMMARY)) {
                             List<DataPoint> l = set.getDataPoints();
                             try {
-                                speed = l.get(0).getValue(Field.FIELD_SPEED).asFloat();
-                                Log.e("TEMP", "Speed: " + speed);
+                                speed = l.get(0).getValue(Field.FIELD_AVERAGE).asFloat();
+                                Log.e("TEMP", "WalkData: " + speed);
                             } catch (Exception e) {
                                 Log.e("TEMP", e.getMessage());
                             }
                         }
                     }
                 }
-            } else if (dr.getDataSets().size() > 0) {
+            }
+
+            res.add(speed);
+
+            drr = new DataReadRequest.Builder()
+                    .aggregate(DataType.TYPE_STEP_COUNT_DELTA, DataType.AGGREGATE_STEP_COUNT_DELTA)
+                    .setTimeRange(l2, l1, TimeUnit.MILLISECONDS)
+                    .bucketByTime(7, TimeUnit.DAYS)
+                    .build();
+
+            dr = Fitness.HistoryApi.readData(mClient, drr).await(1, TimeUnit.MINUTES);
+
+            float walkspeed = 0f;
+
+            if (dr.getBuckets().size() > 0) {
+                for (Bucket bucket : dr.getBuckets()) {
+                    List<DataSet> ds = bucket.getDataSets();
+                    for (DataSet set : ds) {
+                        Log.e("TEMP", "Type: " + set.getDataType());
+                        showDataSet(set);
+                        if (set.getDataType().equals(DataType.TYPE_STEP_COUNT_DELTA)) {
+                            List<DataPoint> l = set.getDataPoints();
+                            try {
+                                walkspeed = l.get(0).getValue(Field.FIELD_STEPS).asInt();
+                                Log.e("TEMP", "WalkData: " + speed);
+                            } catch (Exception e) {
+                                Log.e("TEMP", e.getMessage());
+                            }
+                        }
+                    }
+                }
+            }
+            if (dr.getDataSets().size() > 0) {
                 for (DataSet set : dr.getDataSets()) {
                     showDataSet(set);
                 }
             }
-            return speed;
+
+            drr = new DataReadRequest.Builder()
+                    .aggregate(DataType.TYPE_DISTANCE_DELTA, DataType.AGGREGATE_DISTANCE_DELTA)
+                    .setTimeRange(l2, l1, TimeUnit.MILLISECONDS)
+                    .bucketByTime(7, TimeUnit.DAYS)
+                    .build();
+
+            dr = Fitness.HistoryApi.readData(mClient, drr).await(1, TimeUnit.MINUTES);
+
+            if (dr.getBuckets().size() > 0) {
+                for (Bucket bucket : dr.getBuckets()) {
+                    List<DataSet> ds = bucket.getDataSets();
+                    for (DataSet set : ds) {
+                        Log.e("TEMP", "Type: " + set.getDataType());
+                        showDataSet(set);
+                        if (set.getDataType().equals(DataType.TYPE_DISTANCE_DELTA)) {
+                            List<DataPoint> l = set.getDataPoints();
+                            try {
+                                walkspeed /= l.get(0).getValue(Field.FIELD_DISTANCE).asFloat();
+                                Log.e("TEMP", "WalkData: " + speed);
+                            } catch (Exception e) {
+                                Log.e("TEMP", e.getMessage());
+                            }
+                        }
+                    }
+                }
+            }
+
+            res.add(walkspeed);
+
+            return res;
         }
     }
 
@@ -722,9 +786,10 @@ public class MainActivity extends AppCompatActivity
         try {
             drawPolyLine(pathData);
 
-            float s = new Speed().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR).get();
+            List<Float> l = new WalkData().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR).get();
+            float s = l.get(0);
             if (walkdis >= 1000)
-                updateText2(String.format("%.2f m", walkdis / 1000f));
+                updateText2(String.format("%.2f km", walkdis / 1000f));
             else
                 updateText2(String.format("%d m", walkdis));
 
@@ -741,10 +806,10 @@ public class MainActivity extends AppCompatActivity
                 str += ((int) (walkdis / s) - walkdur) + "초 빠름";
             else
                 str += (walkdur - (int) (walkdis / s)) + "초 느림";
+            float t = l.get(1);
 
-            //updateText1(str);
             updateText1(str);
-            updateText3(String.format("%.1f m/min", (s * 60)));
+            updateText3(String.format("%.1f m/min", (s * 60)) + "\n" + String.format("%.2f steps/m", t));
         } catch (Exception e) {
             e.printStackTrace();
         }
