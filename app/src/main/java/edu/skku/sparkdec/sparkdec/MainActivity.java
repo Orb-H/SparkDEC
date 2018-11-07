@@ -73,14 +73,15 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, SharedPreferences.OnSharedPreferenceChangeListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, OnMapReadyCallback {
     public static final String DETECTED_ACTIVITY = ".DETECTED_ACTIVITY";// Preference 데이터 Key
     public static final String STANDARD_TIME = ".STANDARD_TIME";
-    private static final String STEPS_WALKED = ".STEPS_WALKED";
-    private static final String DISTANCE_WALKED = ".DISTANCE_WALKED";
+    private static final String SPEED = ".SPEED";
+    private static final String STEP_PER_METER = ".STEP_PER_METER";
     private static final String TIME_WALKED = ".TIME_WALKED";
     private static final String[] PERMISSIONS = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET, "com.google.android.gms.permission.ACTIVITY_RECOGNITION", Manifest.permission.WRITE_EXTERNAL_STORAGE};
     static boolean check = false;
@@ -272,6 +273,23 @@ public class MainActivity extends AppCompatActivity
                             }
                         } else {
                         }
+
+                        Log.e("TEMP", "WHAT?");
+
+                        List<Float> l;
+                        try {
+                            l = new WalkData().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR).get();
+                            Log.e("TEMP", "WHAT?");
+                            float s = l.get(0);
+                            float t = l.get(1);
+                            PreferenceManager.getDefaultSharedPreferences(mContext).edit().putFloat(SPEED, s).putFloat(STEP_PER_METER, t).apply();
+                            updateText3(String.format("%.1f m/min", (s * 60)) + "\n" + String.format("%.2f steps/m", t));
+                            Log.e("TEMP", "WHAT?");
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        } catch (ExecutionException e) {
+                            e.printStackTrace();
+                        }
                     }
                 });
     }
@@ -320,7 +338,7 @@ public class MainActivity extends AppCompatActivity
     private void initializeMap(final GoogleMap googleMap) {
         LatLng nowWhere = new LatLng(gpsInfo.getLatitude(), gpsInfo.getLongitude());
         googleMap.addMarker(new MarkerOptions().position(nowWhere).title("현재 위치"));
-        googleMap.moveCamera(CameraUpdateFactory.zoomTo(14));
+        googleMap.moveCamera(CameraUpdateFactory.zoomTo(13));
         googleMap.moveCamera(CameraUpdateFactory.newLatLng(nowWhere));
     }
 
@@ -501,7 +519,7 @@ public class MainActivity extends AppCompatActivity
                     .bucketByTime(7, TimeUnit.DAYS)
                     .build();
 
-            DataReadResult dr = Fitness.HistoryApi.readData(mClient, drr).await(1, TimeUnit.MINUTES);
+            DataReadResult dr = Fitness.HistoryApi.readData(mClient, drr).await(5, TimeUnit.SECONDS);
 
             float speed = 0f;
 
@@ -531,7 +549,7 @@ public class MainActivity extends AppCompatActivity
                     .bucketByTime(7, TimeUnit.DAYS)
                     .build();
 
-            dr = Fitness.HistoryApi.readData(mClient, drr).await(1, TimeUnit.MINUTES);
+            dr = Fitness.HistoryApi.readData(mClient, drr).await(5, TimeUnit.SECONDS);
 
             float walkspeed = 0f;
 
@@ -565,7 +583,7 @@ public class MainActivity extends AppCompatActivity
                     .bucketByTime(7, TimeUnit.DAYS)
                     .build();
 
-            dr = Fitness.HistoryApi.readData(mClient, drr).await(1, TimeUnit.MINUTES);
+            dr = Fitness.HistoryApi.readData(mClient, drr).await(5, TimeUnit.SECONDS);
 
             if (dr.getBuckets().size() > 0) {
                 for (Bucket bucket : dr.getBuckets()) {
@@ -787,8 +805,9 @@ public class MainActivity extends AppCompatActivity
         try {
             drawPolyLine(pathData);
 
-            List<Float> l = new WalkData().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR).get();
-            float s = l.get(0);
+            float s = PreferenceManager.getDefaultSharedPreferences(mContext).getFloat(SPEED, 1.2f);
+            float t = PreferenceManager.getDefaultSharedPreferences(mContext).getFloat(STEP_PER_METER, 1f);
+
             if (walkdis >= 1000)
                 updateText2(String.format("%.2f km", walkdis / 1000f));
             else
@@ -807,10 +826,8 @@ public class MainActivity extends AppCompatActivity
                 str += ((int) (walkdis / s) - walkdur) + "초 빠름";
             else
                 str += (walkdur - (int) (walkdis / s)) + "초 느림";
-            float t = l.get(1);
 
             updateText1(str);
-            updateText3(String.format("%.1f m/min", (s * 60)) + "\n" + String.format("%.2f steps/m", t));
         } catch (Exception e) {
             e.printStackTrace();
         }
