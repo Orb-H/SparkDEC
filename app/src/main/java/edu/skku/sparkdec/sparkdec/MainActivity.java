@@ -68,6 +68,7 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
 import java.text.DateFormat;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -111,6 +112,8 @@ public class MainActivity extends AppCompatActivity
     public int dis = 0;
     public int walkdur = 0;
     public int walkdis = 0;
+
+    private DecimalFormat formatter = new DecimalFormat("@@");
 
     View.OnClickListener searchBtnListener = new View.OnClickListener() {
         @Override
@@ -279,7 +282,7 @@ public class MainActivity extends AppCompatActivity
                             float s = l.get(0);
                             float t = l.get(1);
                             PreferenceManager.getDefaultSharedPreferences(mContext).edit().putFloat(SPEED, s).putFloat(STEP_PER_METER, t).apply();
-                            updateText3(String.format("%.1f m/min", (s * 60)) + "\n" + String.format("%.2f steps/m", t));
+                            updateText3(String.format("%.2f steps/m", t) + "\n" + String.format("%.1f m/분", (s * 60)));
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         } catch (ExecutionException e) {
@@ -513,7 +516,7 @@ public class MainActivity extends AppCompatActivity
             List<Float> res = new ArrayList<>();
             Calendar c = Calendar.getInstance();
             long l1 = c.getTimeInMillis();
-            c.add(Calendar.DATE, -7);
+            c.add(Calendar.DATE, -2);//시연 끝나고 -7로 바꾸기
             long l2 = c.getTimeInMillis();
             DataReadRequest drr = new DataReadRequest.Builder()
                     .aggregate(DataType.TYPE_SPEED, DataType.AGGREGATE_SPEED_SUMMARY)
@@ -811,29 +814,41 @@ public class MainActivity extends AppCompatActivity
             float t = PreferenceManager.getDefaultSharedPreferences(mContext).getFloat(STEP_PER_METER, 1f);
 
             if (walkdis >= 1000)
-                updateText2(String.format("%.2f km", walkdis / 1000f));
+                updateText2(formatter.format(walkdis / 1000f) + "km");
             else
-                updateText2(String.format("%d m", walkdis));
+                updateText2(formatter.format(walkdis) + "m");
 
             String str = "";
             if (s < 0.5 || s >= 4)
                 s = 1.2f;
             if ((int) (walkdis / s) >= 60)
-                str += String.format("%d m %d s", (int) (walkdis / s) / 60, (int) (walkdis / s) % 60);
+                str += String.format("%d분 %d초", (int) (walkdis / s) / 60, (int) (walkdis / s) % 60);
             else
-                str += String.format("%d s", (int) (walkdis / s));
+                str += String.format("%d초", (int) (walkdis / s));
             str += '\n';
-            str += "T맵 보다 ";
-            if (walkdur < (walkdis / s))
-                str += ((int) (walkdis / s) - walkdur) + "초 빠름";
-            else
-                str += (walkdur - (int) (walkdis / s)) + "초 느림";
+            str += "(T맵보다 ";
+            if (walkdur < (walkdis / s)) {
+                int d = (int) (walkdis / s) - walkdur;
+                if (d >= 60) {
+                    str += String.format("%d분 %d초", d / 60, d % 60);
+                } else {
+                    str += String.format("%d초", d);
+                }
+                str += " 느림)";
+            } else {
+                int d = walkdur - (int) (walkdis / s);
+                if (d >= 60) {
+                    str += String.format("%d분 %d초", d / 60, d % 60);
+                } else {
+                    str += String.format("%d초", d);
+                }
+                str += " 빠름)";
+            }
 
             updateText1(str);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
     private ArrayList<LatLng> findSpecPath(String sLat, String sLng, String eLat, String eLng, int mode, String key) {

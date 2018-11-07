@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
     tools:context=".MainActivity"
-    android:orientation="vertical"
     tools:showIn="@layout/app_bar_main">
 
     <LinearLayout
@@ -120,7 +119,7 @@
                 android:layout_weight="0.5"
                 android:background="#4941b1"
                 android:gravity="center"
-                android:text="도보 데이터"
+                android:text="사용자 도보 패턴"
                 android:textColor="#fff"
                 android:textSize="20dp" />
 
