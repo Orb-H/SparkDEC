@@ -45,7 +45,6 @@ import com.google.android.gms.fitness.FitnessStatusCodes;
 import com.google.android.gms.fitness.data.Bucket;
 import com.google.android.gms.fitness.data.DataPoint;
 import com.google.android.gms.fitness.data.DataSet;
-import com.google.android.gms.fitness.data.DataSource;
 import com.google.android.gms.fitness.data.DataType;
 import com.google.android.gms.fitness.data.Field;
 import com.google.android.gms.fitness.request.DataReadRequest;
@@ -274,17 +273,13 @@ public class MainActivity extends AppCompatActivity
                         } else {
                         }
 
-                        Log.e("TEMP", "WHAT?");
-
                         List<Float> l;
                         try {
                             l = new WalkData().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR).get();
-                            Log.e("TEMP", "WHAT?");
                             float s = l.get(0);
                             float t = l.get(1);
                             PreferenceManager.getDefaultSharedPreferences(mContext).edit().putFloat(SPEED, s).putFloat(STEP_PER_METER, t).apply();
                             updateText3(String.format("%.1f m/min", (s * 60)) + "\n" + String.format("%.2f steps/m", t));
-                            Log.e("TEMP", "WHAT?");
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         } catch (ExecutionException e) {
@@ -311,11 +306,9 @@ public class MainActivity extends AppCompatActivity
         toggle.syncState();
 
         //구글 지도 만드는 코드
-        MapsInitializer.initialize(getApplicationContext());
-        gpsInfo = new GPSInfo(getApplicationContext());
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            makeMap();
+        }
 
         // Construct a GeoDataClient.
         geoDataClient = Places.getGeoDataClient(this);
@@ -330,6 +323,14 @@ public class MainActivity extends AppCompatActivity
         mActivityRecognitionClient = new ActivityRecognitionClient(this);
 
         requestPerm();
+    }
+
+    public void makeMap() {
+        MapsInitializer.initialize(getApplicationContext());
+        gpsInfo = new GPSInfo(getApplicationContext());
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
     }
 
     /*
@@ -462,6 +463,7 @@ public class MainActivity extends AppCompatActivity
     public void onRequestPermissionsResult(int requestCode, String permission[], int[] grantResults) {
         switch (requestCode) {
             case 101:
+                makeMap();
                 initializeMap(googleMap);
                 requestPerm(Manifest.permission.INTERNET, 102);
                 break;
