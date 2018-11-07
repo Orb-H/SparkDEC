@@ -320,6 +320,7 @@ public class MainActivity extends AppCompatActivity
     private void initializeMap(final GoogleMap googleMap) {
         LatLng nowWhere = new LatLng(gpsInfo.getLatitude(), gpsInfo.getLongitude());
         googleMap.addMarker(new MarkerOptions().position(nowWhere).title("현재 위치"));
+        googleMap.moveCamera(CameraUpdateFactory.zoomTo(14));
         googleMap.moveCamera(CameraUpdateFactory.newLatLng(nowWhere));
     }
 
@@ -544,7 +545,7 @@ public class MainActivity extends AppCompatActivity
                             List<DataPoint> l = set.getDataPoints();
                             try {
                                 walkspeed = l.get(0).getValue(Field.FIELD_STEPS).asInt();
-                                Log.e("TEMP", "WalkData: " + speed);
+                                Log.e("TEMP", "WalkData: " + walkspeed);
                             } catch (Exception e) {
                                 Log.e("TEMP", e.getMessage());
                             }
@@ -576,7 +577,7 @@ public class MainActivity extends AppCompatActivity
                             List<DataPoint> l = set.getDataPoints();
                             try {
                                 walkspeed /= l.get(0).getValue(Field.FIELD_DISTANCE).asFloat();
-                                Log.e("TEMP", "WalkData: " + speed);
+                                Log.e("TEMP", "WalkData: " + walkspeed);
                             } catch (Exception e) {
                                 Log.e("TEMP", e.getMessage());
                             }
