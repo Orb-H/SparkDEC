@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">SparkDEC</string>
+    <string name="app_menu1">지도</string>
+    <string name="app_menu2">보행 통계</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title">SparkDec</string>
+    <string name="nav_header_subtitle">rhythmstar@skku.edu</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
+    <string name="bicycle">B</string>
+    <string name="running">R</string>
+    <string name="still">S</string>
+    <string name="walking">W</string>
+    <string name="vehicle">V</string>
+    <string name="on_foot">F</string>
+    <string name="tilting">T</string>
+    <string name="unknown_activity">X</string>
+    <string name="google_maps_key">Your Key</string>
+    <string name="oauth_key">Your Key</string>
+    <string name="oauth_key_debug">Your Key</string>
+    <string name="oauth_key_debug_web">Your Key</string>
+</resources>
